@@ -1,0 +1,2063 @@
+---
+/**
+ * @file src/pages/siswa-guru.astro
+ * @description Halaman Kelola Data Siswa, Guru, dan Pendaftaran Kartu RFID
+ */
+export const prerender = false;
+
+const authSession = Astro.cookies.get("auth_session")?.value;
+if (!authSession) {
+  return Astro.redirect("/login");
+}
+if (authSession === "siswa") {
+  return Astro.redirect("/profil-siswa");
+}
+
+import Layout from "../layouts/Layout.astro";
+import { getStudents } from "../utils/attendanceStorage";
+const students = await getStudents();
+---
+
+<Layout title="Data Civitas" activeNav="siswa-guru">
+  <div class="flex flex-col gap-6">
+    <!-- Top Action Bar & Dynamic Metrics Banner -->
+    <div
+      class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/80 backdrop-blur-xl p-5 sm:p-6 rounded-3xl shadow-xs border border-slate-200/60"
+    >
+      <div>
+        <h1
+          class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight"
+        >
+          Data Civitas
+        </h1>
+      </div>
+
+      <!-- Quick Global Control -->
+      <div class="flex items-center gap-2.5 flex-wrap">
+        <button
+          type="button"
+          onclick="window.resetAttendance()"
+          class="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs shadow-xs transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-rose-500"
+          title="Reset semua status presensi hari ini kembali ke Belum Absen"
+        >
+          <span class="material-symbols-outlined text-[16px]">restart_alt</span>
+          <span>Reset Presensi</span>
+        </button>
+        <button
+          id="btn-open-student-modal"
+          class="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs shadow-md shadow-blue-500/20 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-1"
+          title="Tambah siswa Baru"
+        >
+          <span class="material-symbols-outlined text-[18px]">person_add</span>
+          <span>Tambah siswa</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Category Stat Strip (Folder Meta Bar) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:grid-cols-3">
+      <!-- Card AKL -->
+      <div
+        id="card-filter-akl"
+        class="category-stat-card p-4 sm:p-5 rounded-3xl bg-blue-50/90 hover:bg-blue-100/80 border border-blue-200/60 transition-all duration-200 backdrop-blur-md shadow-xs flex items-center justify-between cursor-pointer group hover:scale-[1.01]"
+      >
+        <div class="flex items-center gap-3.5">
+          <div
+            class="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-600/20 group-hover:scale-105 transition-transform duration-200"
+          >
+            <span class="material-symbols-outlined text-2xl"
+              >account_balance_wallet</span
+            >
+          </div>
+          <div>
+            <p class="text-xs font-bold text-blue-900">AKL</p>
+            <p class="text-xl sm:text-2xl font-black text-blue-950">
+              <span id="stat-count-akl">0</span>
+            </p>
+          </div>
+        </div>
+        <span
+          class="material-symbols-outlined text-blue-500 group-hover:translate-x-1 transition-transform duration-200 text-xl"
+          >arrow_forward</span
+        >
+      </div>
+
+      <!-- Card RPL -->
+      <div
+        id="card-filter-rpl"
+        class="category-stat-card p-4 sm:p-5 rounded-3xl bg-slate-900 hover:bg-slate-800 border border-slate-800 transition-all duration-200 text-white shadow-xs flex items-center justify-between cursor-pointer group hover:scale-[1.01]"
+      >
+        <div class="flex items-center gap-3.5">
+          <div
+            class="w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center text-slate-100 shadow-md group-hover:scale-105 transition-transform duration-200"
+          >
+            <span class="material-symbols-outlined text-2xl">terminal</span>
+          </div>
+          <div>
+            <p class="text-xs font-bold text-slate-300">RPL</p>
+            <p class="text-xl sm:text-2xl font-black text-white">
+              <span id="stat-count-rpl">0</span>
+            </p>
+          </div>
+        </div>
+        <span
+          class="material-symbols-outlined text-slate-400 group-hover:translate-x-1 transition-transform duration-200 text-xl"
+          >arrow_forward</span
+        >
+      </div>
+
+      <!-- Card Guru -->
+      <div
+        id="card-filter-guru"
+        class="category-stat-card p-4 sm:p-5 rounded-3xl bg-amber-50/90 hover:bg-amber-100/80 border border-amber-200/60 transition-all duration-200 backdrop-blur-md shadow-xs flex items-center justify-between cursor-pointer group hover:scale-[1.01]"
+      >
+        <div class="flex items-center gap-3.5">
+          <div
+            class="w-12 h-12 rounded-2xl bg-amber-500 text-slate-950 flex items-center justify-center font-bold shadow-md shadow-amber-500/20 group-hover:scale-105 transition-transform duration-200"
+          >
+            <span class="material-symbols-outlined text-2xl">school</span>
+          </div>
+          <div>
+            <p class="text-xs font-bold text-amber-950">Guru</p>
+            <p class="text-xl sm:text-2xl font-black text-amber-950">
+              <span id="stat-count-guru">0</span>
+            </p>
+          </div>
+        </div>
+        <span
+          class="material-symbols-outlined text-amber-600 group-hover:translate-x-1 transition-transform duration-200 text-xl"
+          >arrow_forward</span
+        >
+      </div>
+    </div>
+
+    <!-- Filters, Segmented Tabs & Instant Search with Accessible Ring-Focus -->
+    <div
+      class="flex flex-col gap-4 bg-white/80 backdrop-blur-xl p-5 rounded-3xl shadow-xs border border-slate-200/70"
+    >
+      <div
+        class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3"
+      >
+        <!-- Segmented Tabs -->
+        <div
+          class="inline-flex p-1.5 rounded-2xl bg-slate-100/90 max-w-full overflow-x-auto gap-1 border border-slate-200/50"
+        >
+          <button
+            data-filter="all"
+            class="tab-civitas px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 whitespace-nowrap bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-blue-600"
+          >
+            Semua
+          </button>
+          <button
+            data-filter="akl"
+            class="tab-civitas px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all duration-200 whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-blue-600"
+          >
+            AKL
+          </button>
+          <button
+            data-filter="rpl"
+            class="tab-civitas px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all duration-200 whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-blue-600"
+          >
+            RPL
+          </button>
+          <button
+            data-filter="guru"
+            class="tab-civitas px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-amber-700 transition-all duration-200 whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-blue-600"
+          >
+            Guru
+          </button>
+          <button
+            data-filter="admin"
+            class="tab-civitas px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-purple-700 transition-all duration-200 whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-blue-600"
+          >
+            Admin
+          </button>
+        </div>
+
+        <!-- Accessible Real-Time Search Bar -->
+        <div class="relative flex-1 max-w-md">
+          <label for="search-civitas-input" class="sr-only">Cari Civitas</label>
+          <span
+            class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg pointer-events-none"
+            aria-hidden="true">search</span
+          >
+          <input
+            id="search-civitas-input"
+            class="w-full pl-10 pr-10 py-2.5 text-xs rounded-2xl bg-slate-50 text-slate-800 placeholder-slate-400 border border-slate-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-all duration-200 shadow-inner"
+            placeholder="Cari nama, NISN, RFID..."
+            type="search"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- Table of Civitas Akademika (Sticky Header + Zebra Striping + Contrast Badges) -->
+    <div
+      class="bg-white rounded-3xl shadow-xs border border-slate-200/80 overflow-hidden"
+    >
+      <!-- Table Header Bar -->
+      <div
+        class="p-4 sm:px-6 py-4 border-b border-slate-200/80 bg-slate-50/70 flex items-center justify-between flex-wrap gap-2"
+      >
+        <div class="flex items-center gap-2">
+          <span
+            class="material-symbols-outlined text-blue-600 text-xl"
+            aria-hidden="true">format_list_bulleted</span
+          >
+          <h2 class="text-sm font-bold text-slate-900">Daftar Civitas</h2>
+          <span
+            id="header-total-count"
+            class="text-[11px] font-bold text-blue-800 bg-blue-100/90 border border-blue-200 px-2.5 py-0.5 rounded-full"
+          >
+            {students.length} Terdaftar
+          </span>
+        </div>
+      </div>
+
+      <!-- Scrollable Container with Sticky Table Header -->
+      <div class="overflow-x-auto max-h-[580px] overflow-y-auto">
+        <table class="w-full text-left text-xs table-fixed">
+          <!-- Sticky Header Locked at Top -->
+          <thead
+            class="sticky top-0 z-10 bg-slate-100/95 backdrop-blur-sm text-slate-700 font-extrabold border-b border-slate-200 shadow-xs text-[11px] uppercase tracking-wider"
+          >
+            <tr>
+              <th scope="col" class="py-3.5 px-4 w-[34%] bg-slate-100/95"
+                >Nama & ID</th
+              >
+              <th scope="col" class="py-3.5 px-3 w-[12%] bg-slate-100/95"
+                >Tingkat</th
+              >
+              <th scope="col" class="py-3.5 px-3 w-[16%] bg-slate-100/95"
+                >Jurusan</th
+              >
+              <th scope="col" class="py-3.5 px-3 w-[22%] bg-slate-100/95"
+                >Status</th
+              >
+              <th
+                scope="col"
+                class="py-3.5 px-4 text-center w-[16%] bg-slate-100/95">Aksi</th
+              >
+            </tr>
+          </thead>
+          <!-- Zebra-striped table rows -->
+          <tbody
+            class="divide-y divide-slate-100 text-slate-700"
+            id="studentsTableBody"
+          >
+            <tr>
+              <td
+                colspan="5"
+                class="py-8 text-center text-slate-400 font-medium"
+                >Memuat data civitas...</td
+              >
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Dialog: Pendaftaran & Pairing Kartu RFID (Gaya Desain Multi-Step Sesuai Referensi) -->
+  <div
+    id="student-modal"
+    class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md hidden items-center justify-center p-4 overflow-y-auto"
+  >
+    <div
+      class="bg-white rounded-[2.5rem] max-w-xl w-full p-6 sm:p-9 shadow-2xl border border-slate-100 space-y-6 relative overflow-hidden animate-in fade-in zoom-in-95 duration-200 my-8"
+    >
+      <!-- Decorative Background Orbs Sesuai Foto -->
+      <div
+        class="absolute -top-14 -right-14 w-40 h-40 rounded-full bg-blue-500/10 blur-2xl pointer-events-none"
+      >
+      </div>
+      <div
+        class="absolute -bottom-14 -left-14 w-40 h-40 rounded-full bg-indigo-500/10 blur-2xl pointer-events-none"
+      >
+      </div>
+
+      <!-- Top Header & Sub-link -->
+      <div class="flex items-center justify-between relative z-10">
+        <div class="w-8"></div>
+        <div class="text-center">
+          <h2
+            id="modal-student-title"
+            class="text-lg sm:text-xl font-black text-slate-900 tracking-tight"
+          >
+            Pendaftaran Civitas
+          </h2>
+          <p class="text-[11px] text-slate-400 font-medium">
+            SMK Ma'arif Padang Ratu
+          </p>
+        </div>
+        <button
+          id="btn-close-student-modal"
+          type="button"
+          class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors"
+        >
+          <span class="material-symbols-outlined text-sm">close</span>
+        </button>
+      </div>
+
+      <!-- Stepper Progress Bar (1 - 2 - 3 - 4) -->
+      <div class="relative z-10 px-2 sm:px-6">
+        <div class="flex items-center justify-between relative">
+          <!-- Line connector -->
+          <div class="absolute top-3.5 left-6 right-6 h-0.5 bg-slate-200 -z-10">
+            <div
+              id="stepper-progress-line"
+              class="h-full bg-blue-600 transition-all duration-300"
+              style="width: 0%"
+            >
+            </div>
+          </div>
+
+          <!-- Step 1 -->
+          <div
+            class="step-indicator flex flex-col items-center gap-1 cursor-pointer"
+            data-step="1"
+          >
+            <div
+              id="step-badge-1"
+              class="w-7 h-7 rounded-full bg-blue-600 text-white font-black text-xs flex items-center justify-center shadow-md shadow-blue-500/30 transition-all"
+            >
+              1
+            </div>
+            <span
+              id="step-label-1"
+              class="text-[10px] font-bold text-blue-700 whitespace-nowrap"
+              >Pilih Peran</span
+            >
+          </div>
+
+          <!-- Step 2 -->
+          <div
+            class="step-indicator flex flex-col items-center gap-1 cursor-pointer"
+            data-step="2"
+          >
+            <div
+              id="step-badge-2"
+              class="w-7 h-7 rounded-full bg-slate-100 text-slate-400 font-bold text-xs flex items-center justify-center transition-all"
+            >
+              2
+            </div>
+            <span
+              id="step-label-2"
+              class="text-[10px] font-semibold text-slate-400 whitespace-nowrap"
+              >Data Pokok</span
+            >
+          </div>
+
+          <!-- Step 3 -->
+          <div
+            class="step-indicator flex flex-col items-center gap-1 cursor-pointer"
+            data-step="3"
+          >
+            <div
+              id="step-badge-3"
+              class="w-7 h-7 rounded-full bg-slate-100 text-slate-400 font-bold text-xs flex items-center justify-center transition-all"
+            >
+              3
+            </div>
+            <span
+              id="step-label-3"
+              class="text-[10px] font-semibold text-slate-400 whitespace-nowrap"
+              >Rombel / Tugas</span
+            >
+          </div>
+
+          <!-- Step 4 -->
+          <div
+            class="step-indicator flex flex-col items-center gap-1 cursor-pointer"
+            data-step="4"
+          >
+            <div
+              id="step-badge-4"
+              class="w-7 h-7 rounded-full bg-slate-100 text-slate-400 font-bold text-xs flex items-center justify-center transition-all"
+            >
+              4
+            </div>
+            <span
+              id="step-label-4"
+              class="text-[10px] font-semibold text-slate-400 whitespace-nowrap"
+              >Pairing RFID</span
+            >
+          </div>
+        </div>
+      </div>
+
+      <!-- Form Container -->
+      <form id="student-form" class="relative z-10 space-y-5">
+        <input type="hidden" id="student-id-input" value="" />
+
+        <!-- ================= TAHAP 1: PILIH PERAN CIVITAS (SISWA / GURU / ADMIN) ================= -->
+        <div id="step-panel-1" class="step-panel space-y-4">
+          <div class="border-b border-slate-100 pb-3">
+            <h3 class="text-sm font-extrabold text-slate-900">Pilih Peran</h3>
+            <p class="text-[11px] text-slate-500">
+              Siswa, Guru, atau Administrator.
+            </p>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+            <!-- Pilihan Siswa Card -->
+            <div
+              id="role-card-siswa"
+              class="role-selection-card cursor-pointer p-3.5 rounded-2xl border-2 border-blue-600 bg-blue-50/60 hover:bg-blue-50 transition-all duration-200 relative group shadow-sm flex flex-col justify-between"
+              data-role="siswa"
+            >
+              <div class="flex items-start justify-between">
+                <div
+                  class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform"
+                >
+                  <span class="material-symbols-outlined text-xl">school</span>
+                </div>
+                <div
+                  id="role-radio-siswa"
+                  class="w-5 h-5 rounded-full border-2 border-blue-600 bg-blue-600 text-white flex items-center justify-center text-[10px] font-black"
+                >
+                  ✓
+                </div>
+              </div>
+              <div class="mt-3">
+                <div class="flex items-center gap-1 mb-1">
+                  <h4 class="text-xs font-black text-slate-900">
+                    Siswa / Siswi
+                  </h4>
+                  <span
+                    class="text-[8px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.2 rounded-full"
+                    >Reguler</span
+                  >
+                </div>
+                <p class="text-[10px] text-slate-600 leading-relaxed">
+                  Peserta didik aktif dengan NISN dan data wali.
+                </p>
+              </div>
+            </div>
+
+            <!-- Pilihan Guru Card -->
+            <div
+              id="role-card-guru"
+              class="role-selection-card cursor-pointer p-3.5 rounded-2xl border border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60 transition-all duration-200 relative group flex flex-col justify-between"
+              data-role="guru"
+            >
+              <div class="flex items-start justify-between">
+                <div
+                  class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-600 to-amber-700 text-white flex items-center justify-center shadow-md shadow-amber-900/10 group-hover:scale-105 transition-transform"
+                >
+                  <span class="material-symbols-outlined text-xl"
+                    >co_present</span
+                  >
+                </div>
+                <div
+                  id="role-radio-guru"
+                  class="w-5 h-5 rounded-full border-2 border-slate-300 bg-white text-transparent flex items-center justify-center text-[10px] font-black"
+                >
+                  ✓
+                </div>
+              </div>
+              <div class="mt-3">
+                <div class="flex items-center gap-1 mb-1">
+                  <h4 class="text-xs font-black text-slate-900">Dewan Guru</h4>
+                  <span
+                    class="text-[8px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.2 rounded-full"
+                    >Pendidik</span
+                  >
+                </div>
+                <p class="text-[10px] text-slate-600 leading-relaxed">
+                  Tenaga pendidik dengan NIP/NUPTK.
+                </p>
+              </div>
+            </div>
+
+            <!-- Pilihan Admin Card -->
+            <div
+              id="role-card-admin"
+              class="role-selection-card cursor-pointer p-3.5 rounded-2xl border border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60 transition-all duration-200 relative group flex flex-col justify-between"
+              data-role="admin"
+            >
+              <div class="flex items-start justify-between">
+                <div
+                  class="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-700 text-white flex items-center justify-center shadow-md shadow-purple-900/10 group-hover:scale-105 transition-transform"
+                >
+                  <span class="material-symbols-outlined text-xl"
+                    >admin_panel_settings</span
+                  >
+                </div>
+                <div
+                  id="role-radio-admin"
+                  class="w-5 h-5 rounded-full border-2 border-slate-300 bg-white text-transparent flex items-center justify-center text-[10px] font-black"
+                >
+                  ✓
+                </div>
+              </div>
+              <div class="mt-3">
+                <div class="flex items-center gap-1 mb-1">
+                  <h4 class="text-xs font-black text-slate-900">
+                    Administrator
+                  </h4>
+                  <span
+                    class="text-[8px] font-bold text-purple-800 bg-purple-100 px-1.5 py-0.2 rounded-full"
+                    >Kepsek/Waka</span
+                  >
+                </div>
+                <p class="text-[10px] text-slate-600 leading-relaxed">
+                  Hak akses penuh ke seluruh konfigurasi sistem.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div
+            class="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 text-[11px] text-slate-600 flex items-center gap-2"
+          >
+            <span class="material-symbols-outlined text-blue-600 text-base"
+              >info</span
+            >
+            <span>Formulir akan menyesuaikan otomatis berdasarkan peran.</span>
+          </div>
+        </div>
+
+        <!-- ================= TAHAP 2: DATA POKOK ================= -->
+        <div id="step-panel-2" class="step-panel space-y-4 hidden">
+          <div
+            class="flex items-start justify-between border-b border-slate-100 pb-3"
+          >
+            <div>
+              <h3
+                id="step-2-title"
+                class="text-sm font-extrabold text-slate-900"
+              >
+                Identitas Pribadi Siswa
+              </h3>
+              <p id="step-2-subtitle" class="text-[11px] text-slate-500">
+                Lengkapi data pokok nama dan NISN siswa.
+              </p>
+            </div>
+
+            <!-- Avatar / Photo Upload Widget Sesuai Foto -->
+            <div class="flex flex-col items-center gap-1">
+              <input
+                type="file"
+                id="student-photo-input"
+                accept="image/*"
+                class="hidden"
+              />
+              <div
+                id="avatar-preview-box"
+                class="w-13 h-13 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/25 hover:scale-105 cursor-pointer transition-transform duration-200 overflow-hidden relative group"
+                title="Klik untuk upload foto siswa"
+              >
+                <span
+                  id="avatar-default-icon"
+                  class="material-symbols-outlined text-2xl">photo_camera</span
+                >
+                <img
+                  id="avatar-preview-img"
+                  class="w-full h-full object-cover hidden"
+                  alt="Foto Siswa"
+                />
+                <div
+                  class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
+                >
+                  <span class="material-symbols-outlined text-xs text-white"
+                    >upload</span
+                  >
+                </div>
+              </div>
+              <span
+                id="avatar-label"
+                class="text-[10px] font-bold text-blue-600">Foto Siswa</span
+              >
+            </div>
+          </div>
+
+          <div>
+            <label
+              for="student-name-input"
+              class="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1.5"
+              >Nama Lengkap *</label
+            >
+            <input
+              id="student-name-input"
+              required
+              placeholder="Ketik nama lengkap..."
+              class="w-full text-xs font-medium text-slate-800 bg-slate-50 border border-slate-200/90 rounded-2xl px-4 py-3 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-all shadow-2xs"
+            />
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div>
+              <label
+                id="label-identifier"
+                for="student-identifier-input"
+                class="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1.5"
+                >NISN *</label
+              >
+              <input
+                id="student-identifier-input"
+                type="tel"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                required
+                placeholder="Contoh: 0068472911"
+                class="w-full text-xs font-mono font-medium text-slate-800 bg-slate-50 border border-slate-200/90 rounded-2xl px-4 py-3 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-all shadow-2xs"
+              />
+            </div>
+            <div>
+              <label
+                for="student-birth-input"
+                class="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1.5"
+                >Tanggal Lahir</label
+              >
+              <input
+                id="student-birth-input"
+                placeholder="Contoh: 12 Mei 2007"
+                class="w-full text-xs font-medium text-slate-800 bg-slate-50 border border-slate-200/90 rounded-2xl px-4 py-3 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-all shadow-2xs"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label
+              for="student-address-input"
+              class="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1.5"
+              >Alamat *</label
+            >
+            <input
+              id="student-address-input"
+              required
+              placeholder="Contoh: Padang Ratu, Lampung Tengah"
+              class="w-full text-xs font-medium text-slate-800 bg-slate-50 border border-slate-200/90 rounded-2xl px-4 py-3 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-all shadow-2xs"
+            />
+          </div>
+
+          <div>
+            <label
+              for="student-email-input"
+              class="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1.5"
+              >Email</label
+            >
+            <input
+              id="student-email-input"
+              type="email"
+              placeholder="Contoh: nama@smkmaarif.sch.id"
+              class="w-full text-xs font-medium text-slate-800 bg-slate-50 border border-slate-200/90 rounded-2xl px-4 py-3 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-all shadow-2xs"
+            />
+          </div>
+
+          <!-- Gender Radio Buttons Sesuai Foto -->
+          <div>
+            <span
+              class="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-2"
+              >Jenis Kelamin *</span
+            >
+            <div class="flex items-center gap-6">
+              <label
+                class="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-800"
+              >
+                <input
+                  type="radio"
+                  name="gender-radio"
+                  value="L"
+                  checked
+                  class="w-4 h-4 text-blue-600 focus:ring-blue-500 border-slate-300"
+                />
+                <span>Laki-laki</span>
+              </label>
+              <label
+                class="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-800"
+              >
+                <input
+                  type="radio"
+                  name="gender-radio"
+                  value="P"
+                  class="w-4 h-4 text-blue-600 focus:ring-blue-500 border-slate-300"
+                />
+                <span>Perempuan</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= TAHAP 3: ROMBEL & KELAS / PENUGASAN ================= -->
+        <div id="step-panel-3" class="step-panel space-y-4 hidden">
+          <div class="border-b border-slate-100 pb-3">
+            <h3 id="step-3-title" class="text-sm font-extrabold text-slate-900">
+              Rombel & Jurusan
+            </h3>
+            <p id="step-3-subtitle" class="text-[11px] text-slate-500">
+              Jurusan dan kelas aktif.
+            </p>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div>
+              <label
+                id="label-category-select"
+                for="student-category-select"
+                class="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1.5"
+                >Keahlian *</label
+              >
+              <select
+                id="student-category-select"
+                class="w-full text-xs font-semibold text-slate-800 bg-slate-50 border border-slate-200/90 rounded-2xl px-4 py-3 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 shadow-2xs"
+              >
+                <option value="rpl" selected
+                  >Rekayasa Perangkat Lunak (RPL)</option
+                >
+                <option value="akl">Akuntansi & Keuangan Lembaga (AKL)</option>
+              </select>
+            </div>
+            <div>
+              <label
+                id="label-class-input"
+                for="student-class-input"
+                class="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1.5"
+                >Kelas Aktif *</label
+              >
+              <input
+                id="student-class-input"
+                required
+                placeholder="Contoh: XII RPL"
+                class="w-full text-xs font-medium text-slate-800 bg-slate-50 border border-slate-200/90 rounded-2xl px-4 py-3 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-all shadow-2xs"
+              />
+            </div>
+          </div>
+
+          <!-- Pilihan Double Tag / Penugasan Khusus Pejabat (Muncul saat Peran Guru / Admin) -->
+          <div id="guru-tag-container" class="hidden">
+            <label
+              for="student-tag-select"
+              class="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1.5"
+            >
+              Tugas Tambahan
+            </label>
+            <select
+              id="student-tag-select"
+              class="w-full text-xs font-semibold text-slate-800 bg-slate-50 border border-slate-200/90 rounded-2xl px-4 py-3 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 shadow-2xs"
+            >
+              <option value="" selected>Guru Pengajar</option>
+              <option value="waka">Waka Kesiswaan</option>
+              <option value="kepsek">Kepala Sekolah</option>
+            </select>
+            <p class="text-[10px] text-slate-500 mt-1">
+              Otomatis digunakan di lembar rekap.
+            </p>
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <label
+                id="label-parent-phone"
+                for="student-parent-phone"
+                class="block text-[11px] font-bold uppercase tracking-wider text-slate-700"
+                >WhatsApp Wali *</label
+              >
+              <span
+                id="phone-counter-admin"
+                class="text-[10px] font-mono font-bold text-slate-400"
+                >0 / 10–13 digit</span
+              >
+            </div>
+            <input
+              id="student-parent-phone"
+              type="tel"
+              inputmode="numeric"
+              pattern="^(08|628|\+628)[0-9]{8,11}$"
+              required
+              minlength="10"
+              maxlength="15"
+              placeholder="Contoh: 082177889900 (10–13 digit)"
+              class="w-full text-xs font-mono font-medium text-slate-800 bg-slate-50 border border-slate-200/90 rounded-2xl px-4 py-3 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-all shadow-2xs"
+            />
+            <p
+              id="phone-feedback-admin"
+              class="text-[10px] text-slate-500 mt-1"
+            >
+              Wajib diisi nomor WhatsApp aktif (diawali 08 atau 628, panjang
+              10–13 digit).
+            </p>
+          </div>
+        </div>
+
+        <!-- ================= TAHAP 4: PAIRING KARTU RFID ================= -->
+        <div id="step-panel-4" class="step-panel space-y-4 hidden">
+          <div class="border-b border-slate-100 pb-3">
+            <h3 class="text-sm font-extrabold text-slate-900">Pairing RFID</h3>
+            <p class="text-[11px] text-slate-500">
+              Hubungkan kartu fisik dengan profil civitas.
+            </p>
+          </div>
+
+          <div
+            class="p-4 bg-gradient-to-br from-blue-50/80 to-indigo-50/80 rounded-2xl border border-blue-200/70 space-y-3"
+          >
+            <div class="flex items-center justify-between">
+              <span
+                class="text-xs font-bold text-blue-950 flex items-center gap-1.5"
+              >
+                <span class="material-symbols-outlined text-blue-600 text-base"
+                  >contactless</span
+                >
+                <span>UID RFID *</span>
+              </span>
+              <button
+                type="button"
+                id="btn-gen-uid"
+                class="text-[11px] font-bold text-blue-700 hover:text-blue-900 bg-white border border-blue-200 px-2.5 py-1 rounded-xl shadow-2xs hover:bg-blue-50 transition-all"
+              >
+                Acak UID
+              </button>
+            </div>
+            <input
+              id="student-uid-input"
+              type="tel"
+              inputmode="numeric"
+              pattern="[0-9]*"
+              required
+              maxlength="9"
+              placeholder="9 digit nomor kartu RFID"
+              class="w-full text-sm font-mono font-black uppercase tracking-widest text-blue-950 bg-white border-2 border-blue-300/80 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-600 shadow-inner"
+            />
+            <div
+              class="flex items-center gap-2 text-[11px] text-blue-900 font-semibold"
+            >
+              <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"
+              ></span>
+              <span>Scanner siap membaca kartu</span>
+            </div>
+          </div>
+
+          <!-- Ringkasan Data Sebelum Simpan -->
+          <div
+            class="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/70 text-xs space-y-1.5 font-medium text-slate-700"
+          >
+            <div class="flex justify-between">
+              <span class="text-slate-400">Nama:</span>
+              <span id="summary-name" class="font-bold text-slate-900">-</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-400">Peran:</span>
+              <span id="summary-role" class="font-bold text-blue-700">-</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-400">Kelas:</span>
+              <span id="summary-class" class="font-bold text-blue-700">-</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-400">Server:</span>
+              <span class="font-bold text-emerald-700">Turso Cloud</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Alert Error Message -->
+        <div
+          id="student-form-error"
+          class="hidden text-xs text-rose-700 bg-rose-50 border border-rose-200 p-3 rounded-2xl font-medium"
+        >
+        </div>
+
+        <!-- Tombol Aksi Kapsul Sesuai Desain Foto (Save & Continue) -->
+        <div
+          class="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-100"
+        >
+          <button
+            type="button"
+            id="btn-step-prev"
+            class="hidden text-xs font-bold text-slate-600 hover:text-slate-900 px-4 py-2.5 rounded-full transition-colors"
+          >
+            ← Kembali
+          </button>
+          <div class="flex-1 sm:text-right w-full sm:w-auto">
+            <button
+              type="button"
+              id="btn-step-next"
+              class="w-full sm:w-auto px-8 py-3 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs shadow-lg shadow-blue-500/25 hover:scale-[1.02] active:scale-[0.98] transition-all"
+            >
+              Lanjut →
+            </button>
+            <button
+              type="submit"
+              id="btn-submit-student"
+              class="hidden w-full sm:w-auto px-8 py-3 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs shadow-lg shadow-blue-500/25 hover:scale-[1.02] active:scale-[0.98] transition-all"
+            >
+              Simpan & Daftarkan ✓
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    let allStudents: any[] = [];
+    let currentLogs: any[] = [];
+    let currentPermissions: any[] = [];
+    let activeFilter = "all";
+    let searchQuery = "";
+
+    const tbody = document.getElementById("studentsTableBody");
+    const modal = document.getElementById("student-modal");
+    const btnOpenModal = document.getElementById("btn-open-student-modal");
+    const btnCloseModal = document.getElementById("btn-close-student-modal");
+    const btnCancelModal = document.getElementById("btn-cancel-student-modal");
+    const studentForm = document.getElementById(
+      "student-form",
+    ) as HTMLFormElement | null;
+    const formError = document.getElementById("student-form-error");
+    const modalTitle = document.getElementById("modal-student-title");
+
+    const idInput = document.getElementById(
+      "student-id-input",
+    ) as HTMLInputElement | null;
+    const nameInput = document.getElementById(
+      "student-name-input",
+    ) as HTMLInputElement | null;
+    const identInput = document.getElementById(
+      "student-identifier-input",
+    ) as HTMLInputElement | null;
+    const roleSelect = document.getElementById(
+      "student-role-select",
+    ) as HTMLSelectElement | null;
+    const catSelect = document.getElementById(
+      "student-category-select",
+    ) as HTMLSelectElement | null;
+    const classInput = document.getElementById(
+      "student-class-input",
+    ) as HTMLInputElement | null;
+    const uidInput = document.getElementById(
+      "student-uid-input",
+    ) as HTMLInputElement | null;
+    const addressInput = document.getElementById(
+      "student-address-input",
+    ) as HTMLInputElement | null;
+    const birthInput = document.getElementById(
+      "student-birth-input",
+    ) as HTMLInputElement | null;
+    const emailInput = document.getElementById(
+      "student-email-input",
+    ) as HTMLInputElement | null;
+    const phoneInput = document.getElementById(
+      "student-parent-phone",
+    ) as HTMLInputElement | null;
+    const btnGenUid = document.getElementById("btn-gen-uid");
+    const searchInput = document.getElementById(
+      "search-civitas-input",
+    ) as HTMLInputElement | null;
+
+    async function loadData() {
+      try {
+        const [sRes, lRes, pRes] = await Promise.all([
+          fetch("/api/students"),
+          fetch("/api/attendance"),
+          fetch("/api/permissions"),
+        ]);
+        allStudents = await sRes.json();
+        currentLogs = await lRes.json();
+        currentPermissions = await pRes.json();
+        updateCategoryCounts();
+        renderTable();
+      } catch (e) {
+        console.error("Gagal memuat civitas:", e);
+      }
+    }
+
+    function updateCategoryCounts() {
+      const akl = allStudents.filter((s) => s.category === "akl").length;
+      const rpl = allStudents.filter((s) => s.category === "rpl").length;
+      const guru = allStudents.filter(
+        (s) => s.role === "guru" || s.category === "guru",
+      ).length;
+      const admin = allStudents.filter(
+        (s) => s.role === "admin" || s.category === "admin",
+      ).length;
+
+      const setEl = (id: string, val: number) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = String(val);
+      };
+
+      setEl("stat-count-akl", akl);
+      setEl("stat-count-rpl", rpl);
+      setEl("stat-count-guru", guru);
+
+      const headerTotal = document.getElementById("header-total-count");
+      if (headerTotal)
+        headerTotal.textContent = `${allStudents.length} Terdaftar`;
+    }
+
+    function renderTable() {
+      if (!tbody) return;
+
+      const q = searchQuery.toLowerCase().trim();
+      const filtered = allStudents.filter((s) => {
+        const matchFilter =
+          activeFilter === "all" ||
+          (activeFilter === "guru" &&
+            (s.role === "guru" || s.category === "guru")) ||
+          (activeFilter === "admin" &&
+            (s.role === "admin" || s.category === "admin")) ||
+          s.category === activeFilter;
+
+        const matchQuery =
+          !q ||
+          s.name.toLowerCase().includes(q) ||
+          (s.identifier || "").toLowerCase().includes(q) ||
+          (s.rfidUid || "").toLowerCase().includes(q) ||
+          (s.className || "").toLowerCase().includes(q);
+
+        return matchFilter && matchQuery;
+      });
+
+      if (!filtered.length) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="5" class="py-10 text-center text-slate-400 font-medium">
+              Tidak ada civitas yang sesuai dengan filter pencarian.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = filtered
+        .map((item) => {
+          const initials = item.name
+            .split(" ")
+            .map((n: string) => n[0])
+            .slice(0, 2)
+            .join("");
+          const tingkat =
+            item.role === "admin"
+              ? "ADMIN"
+              : item.role === "guru"
+                ? "GURU"
+                : item.className.split(" ")[0] || "X";
+
+          // Badge Kehadiran Harian & Perizinan
+          const masukLog = currentLogs.find(
+            (l: any) => l.rfidUid === item.rfidUid && l.type === "masuk",
+          );
+          const pulangLog = currentLogs.find(
+            (l: any) => l.rfidUid === item.rfidUid && l.type === "pulang",
+          );
+
+          // Cek apakah civitas memiliki izin resmi yang disetujui untuk hari ini
+          const todayStr = new Date().toLocaleDateString("en-CA", {
+            timeZone: "Asia/Jakarta",
+          });
+          const activePerm = currentPermissions.find((p: any) => {
+            const match =
+              p.studentId === item.id ||
+              (p.name &&
+                item.name &&
+                p.name.toLowerCase() === item.name.toLowerCase());
+            return (
+              match &&
+              p.status === "Disetujui" &&
+              todayStr >= p.startDate &&
+              todayStr <= (p.endDate || p.startDate)
+            );
+          });
+
+          let statusBadgeHtml = "";
+
+          if (activePerm) {
+            statusBadgeHtml = `
+            <span class="inline-flex items-center gap-1.5 text-[11px] font-bold text-purple-900 bg-purple-100 border border-purple-300 px-3 py-1 rounded-full whitespace-nowrap shadow-xs">
+              <span class="w-2 h-2 rounded-full bg-purple-600"></span>
+              Izin (${activePerm.categoryLabel || "Sah"})
+            </span>
+          `;
+          } else if (pulangLog && pulangLog.status === "Bolos") {
+            statusBadgeHtml = `
+            <span class="inline-flex items-center gap-1.5 text-[11px] font-bold text-rose-900 bg-rose-100 border border-rose-300 px-3 py-1 rounded-full whitespace-nowrap shadow-xs animate-pulse">
+              <span class="w-2 h-2 rounded-full bg-rose-600"></span>
+              Bolos (-10)
+            </span>
+          `;
+          } else if (masukLog && pulangLog) {
+            statusBadgeHtml = `
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span class="inline-flex items-center gap-1 text-[10px] font-bold ${masukLog.status === "Terlambat" ? "text-amber-800 bg-amber-100 border-amber-300" : "text-emerald-800 bg-emerald-100 border-emerald-300"} border px-2.5 py-0.5 rounded-full shadow-xs">
+                Masuk ${masukLog.time}
+              </span>
+              <span class="inline-flex items-center gap-1 text-[10px] font-bold text-blue-800 bg-blue-100 border border-blue-300 px-2.5 py-0.5 rounded-full shadow-xs">
+                Pulang ${pulangLog.time}
+              </span>
+            </div>
+          `;
+          } else if (masukLog) {
+            const isLate = masukLog.status === "Terlambat";
+            statusBadgeHtml = `
+            <span class="inline-flex items-center gap-1.5 text-[11px] font-bold ${isLate ? "text-amber-900 bg-amber-100 border-amber-300" : "text-emerald-900 bg-emerald-100 border-emerald-300"} border px-3 py-1 rounded-full whitespace-nowrap shadow-xs">
+              <span class="w-2 h-2 rounded-full ${isLate ? "bg-amber-600" : "bg-emerald-600"}"></span>
+              ${masukLog.status} (${masukLog.time})
+            </span>
+          `;
+          } else if (pulangLog) {
+            statusBadgeHtml = `
+            <span class="inline-flex items-center gap-1.5 text-[11px] font-bold text-blue-900 bg-blue-100 border border-blue-300 px-3 py-1 rounded-full whitespace-nowrap shadow-xs">
+              <span class="w-2 h-2 rounded-full bg-blue-600"></span>
+              Pulang (${pulangLog.time})
+            </span>
+          `;
+          } else {
+            statusBadgeHtml = `
+            <span class="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-600 bg-slate-100 border border-slate-300 px-3 py-1 rounded-full whitespace-nowrap shadow-xs">
+              <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+              Belum Hadir
+            </span>
+          `;
+          }
+
+          const avatarClass =
+            item.role === "admin"
+              ? "bg-purple-100 text-purple-800 border-purple-200"
+              : item.role === "guru"
+                ? "bg-amber-100 text-amber-800 border-amber-200"
+                : "bg-blue-100 text-blue-800 border-blue-200";
+
+          const profileBtnClass =
+            item.role === "admin"
+              ? "bg-purple-50 hover:bg-purple-600 hover:text-white text-purple-700"
+              : item.role === "guru"
+                ? "bg-amber-50 hover:bg-amber-600 hover:text-white text-amber-700"
+                : "bg-indigo-50 hover:bg-indigo-600 hover:text-white text-indigo-700";
+
+          const roleLabel =
+            item.role === "admin"
+              ? "Admin"
+              : item.role === "guru"
+                ? "Guru"
+                : "Siswa";
+
+          const tagBadge =
+            item.tag === "kepsek"
+              ? '<span class="ml-1.5 px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-purple-100 text-purple-800 border border-purple-300 shadow-2xs">Kepala Sekolah</span>'
+              : item.tag === "waka"
+                ? '<span class="ml-1.5 px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-blue-100 text-blue-800 border border-blue-300 shadow-2xs">Waka Kesiswaan</span>'
+                : "";
+
+          const authRole = localStorage.getItem("auth_role");
+          const isAdminLoggedIn = authRole === "admin";
+          const isItemAdmin = item.role === "admin";
+
+          let rfidBadgeHtml = "";
+          if (isItemAdmin) {
+            rfidBadgeHtml =
+              '<span class="text-slate-400 font-bold">RFID: Terkunci</span>';
+          } else if (isAdminLoggedIn) {
+            rfidBadgeHtml = `<span class="text-blue-600 font-bold">RFID: ${item.rfidUid || "-"}</span>`;
+          } else {
+            rfidBadgeHtml =
+              '<span class="text-slate-400 font-medium">RFID: Aktif</span>';
+          }
+
+          return `
+          <tr class="odd:bg-white even:bg-slate-50/70 hover:bg-blue-50/70 transition-colors duration-150 group">
+            <td class="py-3.5 px-4">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl ${avatarClass} font-extrabold flex items-center justify-center shrink-0 border">
+                  ${initials}
+                </div>
+                <div class="truncate">
+                  <a href="/profil-siswa?id=${item.id}" class="font-bold text-slate-900 group-hover:text-blue-700 transition-colors truncate hover:underline block" title="Buka Profil ${roleLabel}">
+                    ${item.name}
+                  </a>
+                  <p class="text-[10px] text-slate-500 font-mono">
+                    ID: ${item.identifier || "-"} • ${rfidBadgeHtml}
+                  </p>
+                </div>
+              </div>
+            </td>
+            <td class="py-3.5 px-3">
+              <span class="font-bold text-slate-800">${tingkat}</span>
+            </td>
+            <td class="py-3.5 px-3 font-bold text-blue-700 truncate">
+              <span>${item.className}</span>
+              ${tagBadge}
+            </td>
+            <td class="py-3.5 px-3">${statusBadgeHtml}</td>
+            <td class="py-3.5 px-4 text-center">
+              <div class="flex items-center justify-center gap-1.5">
+                <a
+                  href="/profil-siswa?id=${item.id}"
+                  class="p-1.5 rounded-lg ${profileBtnClass} text-xs font-bold transition-all"
+                  title="Buka Halaman Profil ${roleLabel}"
+                >
+                  <span class="material-symbols-outlined text-sm">badge</span>
+                </a>
+                <button
+                  type="button"
+                  data-uid="${isItemAdmin ? "" : item.rfidUid}"
+                  class="btn-row-tap p-1.5 rounded-lg bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-700 text-xs font-bold transition-all"
+                  title="Simulasi Tap RFID"
+                >
+                  <span class="material-symbols-outlined text-sm">contactless</span>
+                </button>
+                <button
+                  type="button"
+                  data-student='${JSON.stringify(item)}'
+                  class="btn-row-edit p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all"
+                  title="Edit Data & Pairing Kartu"
+                >
+                  <span class="material-symbols-outlined text-sm">edit</span>
+                </button>
+                <button
+                  type="button"
+                  data-id="${item.id}"
+                  data-name="${item.name}"
+                  class="btn-row-delete p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition-all"
+                  title="Hapus Civitas"
+                >
+                  <span class="material-symbols-outlined text-sm">delete</span>
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+        })
+        .join("");
+
+      // Wire Row Buttons
+      tbody.querySelectorAll(".btn-row-tap").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const uid = (btn as HTMLElement).dataset.uid;
+          if (uid && (window as any).tap) (window as any).tap(uid);
+        });
+      });
+
+      tbody.querySelectorAll(".btn-row-edit").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const s = JSON.parse((btn as HTMLElement).dataset.student || "{}");
+          openEditModal(s);
+        });
+      });
+
+      tbody.querySelectorAll(".btn-row-delete").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const id = (btn as HTMLElement).dataset.id;
+          const name = (btn as HTMLElement).dataset.name;
+          if (id && confirm(`Hapus civitas "${name}" dari sistem?`)) {
+            deleteStudentItem(id);
+          }
+        });
+      });
+    }
+
+    // Multi-Step Stepper & Avatar Elements
+    let currentStep = 1;
+    let selectedRole: "siswa" | "guru" | "admin" = "siswa";
+
+    const stepPanel1 = document.getElementById("step-panel-1");
+    const stepPanel2 = document.getElementById("step-panel-2");
+    const stepPanel3 = document.getElementById("step-panel-3");
+    const stepPanel4 = document.getElementById("step-panel-4");
+    const stepperLine = document.getElementById("stepper-progress-line");
+
+    const btnStepPrev = document.getElementById("btn-step-prev");
+    const btnStepNext = document.getElementById("btn-step-next");
+    const btnSubmitStudent = document.getElementById("btn-submit-student");
+
+    const summaryName = document.getElementById("summary-name");
+    const summaryRole = document.getElementById("summary-role");
+    const summaryClass = document.getElementById("summary-class");
+
+    const photoInput = document.getElementById(
+      "student-photo-input",
+    ) as HTMLInputElement | null;
+    const avatarBox = document.getElementById("avatar-preview-box");
+    const avatarImg = document.getElementById(
+      "avatar-preview-img",
+    ) as HTMLImageElement | null;
+    const avatarIcon = document.getElementById("avatar-default-icon");
+
+    function resetAvatar() {
+      if (avatarImg) {
+        avatarImg.src = "";
+        avatarImg.classList.add("hidden");
+      }
+      if (avatarIcon) {
+        avatarIcon.classList.remove("hidden");
+      }
+      if (photoInput) {
+        photoInput.value = "";
+      }
+    }
+
+    avatarBox?.addEventListener("click", () => {
+      photoInput?.click();
+    });
+
+    photoInput?.addEventListener("change", () => {
+      const file = photoInput.files?.[0];
+      if (file && avatarImg && avatarIcon) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          avatarImg.src = e.target?.result as string;
+          avatarImg.classList.remove("hidden");
+          avatarIcon.classList.add("hidden");
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    function setRole(role: "siswa" | "guru" | "admin") {
+      selectedRole = role;
+      const roleCardSiswa = document.getElementById("role-card-siswa");
+      const roleCardGuru = document.getElementById("role-card-guru");
+      const roleCardAdmin = document.getElementById("role-card-admin");
+      const radioSiswa = document.getElementById("role-radio-siswa");
+      const radioGuru = document.getElementById("role-radio-guru");
+      const radioAdmin = document.getElementById("role-radio-admin");
+
+      const step2Title = document.getElementById("step-2-title");
+      const step2Subtitle = document.getElementById("step-2-subtitle");
+      const labelIdentifier = document.getElementById("label-identifier");
+      const avatarLabel = document.getElementById("avatar-label");
+
+      const step3Title = document.getElementById("step-3-title");
+      const step3Subtitle = document.getElementById("step-3-subtitle");
+      const labelCategory = document.getElementById("label-category-select");
+      const labelClass = document.getElementById("label-class-input");
+      const labelParentPhone = document.getElementById("label-parent-phone");
+
+      // Reset all cards to inactive
+      [roleCardSiswa, roleCardGuru, roleCardAdmin].forEach((c) => {
+        c?.classList.remove(
+          "border-2",
+          "border-blue-600",
+          "bg-blue-50/60",
+          "border-amber-600",
+          "bg-amber-50/60",
+          "border-purple-600",
+          "bg-purple-50/60",
+          "shadow-sm",
+        );
+        c?.classList.add("border", "border-slate-200", "bg-white");
+      });
+      [radioSiswa, radioGuru, radioAdmin].forEach((r) => {
+        r?.classList.remove(
+          "border-blue-600",
+          "bg-blue-600",
+          "border-amber-600",
+          "bg-amber-600",
+          "border-purple-600",
+          "bg-purple-600",
+          "text-white",
+        );
+        r?.classList.add("border-slate-300", "bg-white", "text-transparent");
+      });
+
+      if (role === "siswa") {
+        // Style Card Siswa Active
+        roleCardSiswa?.classList.remove("border-slate-200", "bg-white");
+        roleCardSiswa?.classList.add(
+          "border-2",
+          "border-blue-600",
+          "bg-blue-50/60",
+          "shadow-sm",
+        );
+        radioSiswa?.classList.remove(
+          "border-slate-300",
+          "bg-white",
+          "text-transparent",
+        );
+        radioSiswa?.classList.add(
+          "border-blue-600",
+          "bg-blue-600",
+          "text-white",
+        );
+
+        // Dynamic labels for Siswa
+        if (step2Title) step2Title.textContent = "Identitas Siswa";
+        if (step2Subtitle) step2Subtitle.textContent = "Nama dan NISN siswa.";
+        if (labelIdentifier) labelIdentifier.textContent = "NISN *";
+        if (identInput)
+          identInput.placeholder = "Contoh: 0068472911 (10 digit)";
+        if (avatarLabel) avatarLabel.textContent = "Foto Siswa";
+
+        if (step3Title) step3Title.textContent = "Rombel & Jurusan";
+        if (step3Subtitle)
+          step3Subtitle.textContent = "Jurusan dan kelas aktif.";
+        if (labelCategory) labelCategory.textContent = "Keahlian *";
+        if (catSelect) {
+          catSelect.innerHTML = `
+            <option value="rpl" selected>Rekayasa Perangkat Lunak (RPL)</option>
+            <option value="akl">Akuntansi & Keuangan Lembaga (AKL)</option>
+          `;
+        }
+        if (labelClass) labelClass.textContent = "Kelas Aktif *";
+        if (classInput) classInput.placeholder = "Contoh: XII RPL";
+        if (labelParentPhone) labelParentPhone.textContent = "WhatsApp Wali *";
+      } else if (role === "guru") {
+        // Style Card Guru Active
+        roleCardGuru?.classList.remove("border-slate-200", "bg-white");
+        roleCardGuru?.classList.add(
+          "border-2",
+          "border-amber-600",
+          "bg-amber-50/60",
+          "shadow-sm",
+        );
+        radioGuru?.classList.remove(
+          "border-slate-300",
+          "bg-white",
+          "text-transparent",
+        );
+        radioGuru?.classList.add(
+          "border-amber-600",
+          "bg-amber-600",
+          "text-white",
+        );
+
+        // Dynamic labels for Guru
+        if (step2Title) step2Title.textContent = "Identitas Guru";
+        if (step2Subtitle) step2Subtitle.textContent = "Nama dan NIP/NUPTK.";
+        if (labelIdentifier) labelIdentifier.textContent = "NIP / NUPTK *";
+        if (identInput)
+          identInput.placeholder = "Contoh: 198503152010011002 atau NUPTK";
+        if (avatarLabel) avatarLabel.textContent = "Foto Guru";
+
+        if (step3Title) step3Title.textContent = "Penugasan";
+        if (step3Subtitle)
+          step3Subtitle.textContent = "Bidang tugas pengajaran.";
+        if (labelCategory) labelCategory.textContent = "Kelompok *";
+        if (catSelect) {
+          catSelect.innerHTML = `
+            <option value="guru" selected>Dewan Guru (Non-Jurusan / Umum)</option>
+            <option value="rpl">Guru Produktif RPL</option>
+            <option value="akl">Guru Produktif AKL</option>
+          `;
+        }
+        if (labelClass) labelClass.textContent = "Jabatan *";
+        if (classInput) classInput.placeholder = "Contoh: Guru Pemrograman Web";
+        if (labelParentPhone)
+          labelParentPhone.textContent = "WhatsApp Pribadi *";
+      } else if (role === "admin") {
+        // Style Card Admin Active
+        roleCardAdmin?.classList.remove("border-slate-200", "bg-white");
+        roleCardAdmin?.classList.add(
+          "border-2",
+          "border-purple-600",
+          "bg-purple-50/60",
+          "shadow-sm",
+        );
+        radioAdmin?.classList.remove(
+          "border-slate-300",
+          "bg-white",
+          "text-transparent",
+        );
+        radioAdmin?.classList.add(
+          "border-purple-600",
+          "bg-purple-600",
+          "text-white",
+        );
+
+        // Dynamic labels for Admin
+        if (step2Title) step2Title.textContent = "Identitas Admin";
+        if (step2Subtitle)
+          step2Subtitle.textContent = "Nama dan NIP/ID administrator.";
+        if (labelIdentifier) labelIdentifier.textContent = "NIP / ID Admin *";
+        if (identInput)
+          identInput.placeholder = "Contoh: 199001012023011001 atau ID Admin";
+        if (avatarLabel) avatarLabel.textContent = "Foto Admin";
+
+        if (step3Title) step3Title.textContent = "Jabatan & Hak Akses Sistem";
+        if (step3Subtitle)
+          step3Subtitle.textContent =
+            "Tentukan jabatan struktural administrator sekolah.";
+        if (labelCategory)
+          labelCategory.textContent = "Hak Akses Administrator *";
+        if (catSelect) {
+          catSelect.innerHTML = `
+            <option value="admin" selected>Administrator Sistem (Full Access)</option>
+            <option value="kepsek">Kepala Sekolah (Executive)</option>
+            <option value="waka">Waka Kesiswaan / Kurikulum</option>
+            <option value="tu">Tata Usaha & Keuangan</option>
+          `;
+        }
+        if (labelClass)
+          labelClass.textContent = "Jabatan Struktural / Rombel *";
+        if (classInput)
+          classInput.placeholder =
+            "Contoh: Kepala Sekolah / Waka Kesiswaan / Admin Utama";
+        if (labelParentPhone)
+          labelParentPhone.textContent = "Nomor WhatsApp Admin *";
+      }
+
+      const guruTagBox = document.getElementById("guru-tag-container");
+      if (guruTagBox) {
+        if (role === "guru" || role === "admin") {
+          guruTagBox.classList.remove("hidden");
+        } else {
+          guruTagBox.classList.add("hidden");
+        }
+      }
+    }
+
+    document
+      .getElementById("role-card-siswa")
+      ?.addEventListener("click", () => {
+        setRole("siswa");
+      });
+
+    document.getElementById("role-card-guru")?.addEventListener("click", () => {
+      setRole("guru");
+    });
+
+    document
+      .getElementById("role-card-admin")
+      ?.addEventListener("click", () => {
+        setRole("admin");
+      });
+
+    function validateWhatsApp(phone: string): {
+      valid: boolean;
+      message: string;
+    } {
+      const cleaned = phone.replace(/[\s\-\.]/g, "");
+      if (!cleaned) {
+        return { valid: false, message: "Nomor WhatsApp wajib diisi." };
+      }
+      if (!/^\+?[0-9]+$/.test(cleaned)) {
+        return {
+          valid: false,
+          message: "Nomor WhatsApp hanya boleh berisi angka.",
+        };
+      }
+      if (cleaned.startsWith("08")) {
+        if (cleaned.length < 10) {
+          return {
+            valid: false,
+            message: `Nomor WhatsApp kurang (${cleaned.length} digit). Wajib minimal 10 digit (contoh: 0812345678).`,
+          };
+        }
+        if (cleaned.length > 13) {
+          return {
+            valid: false,
+            message: `Nomor WhatsApp berlebih (${cleaned.length} digit). Maksimal 13 digit (contoh: 082177889900).`,
+          };
+        }
+        return {
+          valid: true,
+          message: `Nomor WhatsApp valid (${cleaned.length} digit).`,
+        };
+      } else if (cleaned.startsWith("628")) {
+        if (cleaned.length < 11) {
+          return {
+            valid: false,
+            message: `Nomor WhatsApp format 628 kurang (${cleaned.length} digit). Minimal 11 digit.`,
+          };
+        }
+        if (cleaned.length > 14) {
+          return {
+            valid: false,
+            message: `Nomor WhatsApp format 628 berlebih (${cleaned.length} digit). Maksimal 14 digit.`,
+          };
+        }
+        return {
+          valid: true,
+          message: `Nomor WhatsApp valid (${cleaned.length} digit).`,
+        };
+      } else if (cleaned.startsWith("+628")) {
+        if (cleaned.length < 12) {
+          return {
+            valid: false,
+            message: `Nomor WhatsApp format +628 kurang (${cleaned.length - 1} digit). Minimal 11 digit.`,
+          };
+        }
+        if (cleaned.length > 15) {
+          return {
+            valid: false,
+            message: `Nomor WhatsApp format +628 berlebih (${cleaned.length - 1} digit). Maksimal 14 digit.`,
+          };
+        }
+        return {
+          valid: true,
+          message: `Nomor WhatsApp valid (${cleaned.length - 1} digit).`,
+        };
+      } else {
+        return {
+          valid: false,
+          message:
+            "Nomor WhatsApp harus diawali 08 atau 628 (contoh: 082177889900).",
+        };
+      }
+    }
+
+    const phoneCounterAdmin = document.getElementById("phone-counter-admin");
+    const phoneFeedbackAdmin = document.getElementById("phone-feedback-admin");
+
+    phoneInput?.addEventListener("input", () => {
+      const val = phoneInput.value.trim();
+      const digitsOnly = val.replace(/[^0-9]/g, "");
+      const res = validateWhatsApp(val);
+
+      if (phoneCounterAdmin) {
+        phoneCounterAdmin.textContent = `${digitsOnly.length} / 10–13 digit`;
+        if (res.valid) {
+          phoneCounterAdmin.className =
+            "text-[10px] font-mono font-bold text-emerald-600";
+        } else if (digitsOnly.length === 0) {
+          phoneCounterAdmin.className =
+            "text-[10px] font-mono font-bold text-slate-400";
+        } else {
+          phoneCounterAdmin.className =
+            "text-[10px] font-mono font-bold text-rose-500";
+        }
+      }
+
+      if (phoneFeedbackAdmin) {
+        if (!val) {
+          phoneFeedbackAdmin.textContent =
+            "Wajib diisi nomor WhatsApp aktif (diawali 08 atau 628, panjang 10–13 digit).";
+          phoneFeedbackAdmin.className = "text-[10px] text-slate-500 mt-1";
+        } else if (res.valid) {
+          phoneFeedbackAdmin.textContent = `✓ ${res.message}`;
+          phoneFeedbackAdmin.className =
+            "text-[10px] text-emerald-600 font-bold mt-1";
+        } else {
+          phoneFeedbackAdmin.textContent = `⚠ ${res.message}`;
+          phoneFeedbackAdmin.className =
+            "text-[10px] text-rose-600 font-medium mt-1";
+        }
+      }
+    });
+
+    function validateStep(step: number): boolean {
+      if (formError) formError.classList.add("hidden");
+      if (step === 1) {
+        return true;
+      }
+      if (step === 2) {
+        if (!nameInput?.value.trim()) {
+          if (formError) {
+            formError.textContent =
+              "Mohon isi nama lengkap civitas terlebih dahulu.";
+            formError.classList.remove("hidden");
+          }
+          nameInput?.focus();
+          return false;
+        }
+        if (!identInput?.value.trim()) {
+          if (formError) {
+            formError.textContent =
+              selectedRole === "admin"
+                ? "Mohon isi NIP / ID Administrator."
+                : selectedRole === "guru"
+                  ? "Mohon isi Nomor Induk Pegawai (NIP / NUPTK)."
+                  : "Mohon isi Nomor Induk Siswa Nasional (NISN).";
+            formError.classList.remove("hidden");
+          }
+          identInput?.focus();
+          return false;
+        }
+      } else if (step === 3) {
+        if (!classInput?.value.trim()) {
+          if (formError) {
+            formError.textContent =
+              selectedRole === "admin"
+                ? "Mohon isi jabatan struktural administrator (contoh: Kepala Sekolah / Waka Kesiswaan)."
+                : selectedRole === "guru"
+                  ? "Mohon isi jabatan / tugas mengajar dewan guru."
+                  : "Mohon isi rombel / kelas civitas (contoh: XII RPL).";
+            formError.classList.remove("hidden");
+          }
+          classInput?.focus();
+          return false;
+        }
+
+        const phoneVal = phoneInput?.value?.trim() || "";
+        const phoneCheck = validateWhatsApp(phoneVal);
+        if (!phoneCheck.valid) {
+          if (formError) {
+            formError.textContent = phoneCheck.message;
+            formError.classList.remove("hidden");
+          }
+          phoneInput?.focus();
+          return false;
+        }
+      }
+      return true;
+    }
+
+    function updateStepUI(targetStep: number) {
+      currentStep = targetStep;
+
+      // Toggle Panels
+      stepPanel1?.classList.toggle("hidden", currentStep !== 1);
+      stepPanel2?.classList.toggle("hidden", currentStep !== 2);
+      stepPanel3?.classList.toggle("hidden", currentStep !== 3);
+      stepPanel4?.classList.toggle("hidden", currentStep !== 4);
+
+      // Update Stepper Progress Line
+      if (stepperLine) {
+        stepperLine.style.width =
+          currentStep === 1
+            ? "0%"
+            : currentStep === 2
+              ? "33.3%"
+              : currentStep === 3
+                ? "66.6%"
+                : "100%";
+      }
+
+      // Update Stepper Indicators (1 - 2 - 3 - 4)
+      for (let s = 1; s <= 4; s++) {
+        const badge = document.getElementById(`step-badge-${s}`);
+        const label = document.getElementById(`step-label-${s}`);
+        if (!badge || !label) continue;
+
+        if (s < currentStep) {
+          // Selesai
+          badge.className =
+            "w-7 h-7 rounded-full bg-emerald-500 text-white font-black text-xs flex items-center justify-center shadow-md shadow-emerald-500/20 transition-all";
+          badge.innerHTML =
+            '<span class="material-symbols-outlined text-sm font-bold">check</span>';
+          label.className =
+            "text-[10px] font-bold text-emerald-700 whitespace-nowrap";
+        } else if (s === currentStep) {
+          // Sedang Aktif
+          badge.className =
+            "w-7 h-7 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-black text-xs flex items-center justify-center shadow-md shadow-blue-500/30 ring-4 ring-blue-100 transition-all";
+          badge.textContent = String(s);
+          label.className =
+            "text-[10px] font-bold text-blue-700 whitespace-nowrap";
+        } else {
+          // Belum Aktif
+          badge.className =
+            "w-7 h-7 rounded-full bg-slate-100 text-slate-400 font-bold text-xs flex items-center justify-center transition-all";
+          badge.textContent = String(s);
+          label.className =
+            "text-[10px] font-semibold text-slate-400 whitespace-nowrap";
+        }
+      }
+
+      // Update Tombol Navigasi Kapsul
+      if (currentStep === 1) {
+        btnStepPrev?.classList.add("hidden");
+        btnStepNext?.classList.remove("hidden");
+        if (btnStepNext) btnStepNext.textContent = "Lanjut →";
+        btnSubmitStudent?.classList.add("hidden");
+      } else if (currentStep === 2) {
+        btnStepPrev?.classList.remove("hidden");
+        if (btnStepPrev) btnStepPrev.textContent = "← Kembali";
+        btnStepNext?.classList.remove("hidden");
+        if (btnStepNext) btnStepNext.textContent = "Lanjut →";
+        btnSubmitStudent?.classList.add("hidden");
+      } else if (currentStep === 3) {
+        btnStepPrev?.classList.remove("hidden");
+        if (btnStepPrev) btnStepPrev.textContent = "← Kembali";
+        btnStepNext?.classList.remove("hidden");
+        if (btnStepNext) btnStepNext.textContent = "Lanjut →";
+        btnSubmitStudent?.classList.add("hidden");
+      } else if (currentStep === 4) {
+        btnStepPrev?.classList.remove("hidden");
+        if (btnStepPrev) btnStepPrev.textContent = "← Kembali";
+        btnStepNext?.classList.add("hidden");
+        btnSubmitStudent?.classList.remove("hidden");
+
+        // Isi Ringkasan Civitas pada Langkah 4
+        if (summaryName)
+          summaryName.textContent = nameInput?.value.trim() || "-";
+        if (summaryRole) {
+          summaryRole.textContent =
+            selectedRole === "admin"
+              ? "Administrator Sekolah (Hak Akses Penuh)"
+              : selectedRole === "guru"
+                ? "Dewan Guru / Tenaga Pendidik"
+                : "Siswa Reguler";
+        }
+        if (summaryClass) {
+          summaryClass.textContent = `${classInput?.value.trim() || "-"} (${(catSelect?.value || (selectedRole === "admin" ? "ADMIN" : "RPL")).toUpperCase()})`;
+        }
+      }
+    }
+
+    btnStepNext?.addEventListener("click", () => {
+      if (currentStep === 1) {
+        if (validateStep(1)) updateStepUI(2);
+      } else if (currentStep === 2) {
+        if (validateStep(2)) updateStepUI(3);
+      } else if (currentStep === 3) {
+        if (validateStep(3)) updateStepUI(4);
+      }
+    });
+
+    btnStepPrev?.addEventListener("click", () => {
+      if (currentStep > 1) {
+        updateStepUI(currentStep - 1);
+      }
+    });
+
+    document.querySelectorAll(".step-indicator").forEach((ind) => {
+      ind.addEventListener("click", () => {
+        const target = parseInt((ind as HTMLElement).dataset.step || "1", 10);
+        if (target === currentStep) return;
+        if (target > currentStep) {
+          if (currentStep === 1 && !validateStep(1)) return;
+          if (currentStep === 2 && !validateStep(2)) return;
+          if (currentStep === 3 && !validateStep(3)) return;
+        }
+        updateStepUI(target);
+      });
+    });
+
+    // Modal Control
+    // Modal Control
+    function openAddModal() {
+      if (modalTitle) modalTitle.textContent = "Pendaftaran Civitas Baru";
+      if (studentForm) studentForm.reset();
+      if (idInput) idInput.value = "";
+      if (addressInput) addressInput.value = "Padang Ratu, Lampung";
+      if (birthInput) birthInput.value = "";
+      if (emailInput) emailInput.value = "";
+      if (phoneInput) phoneInput.value = "";
+      if (uidInput) {
+        uidInput.disabled = false;
+        uidInput.placeholder = "Tempel kartu RFID atau klik Generate";
+      }
+      if (btnGenUid) btnGenUid.classList.remove("hidden");
+      resetAvatar();
+      setRole("siswa");
+      const tagSelect = document.getElementById(
+        "student-tag-select",
+      ) as HTMLSelectElement;
+      if (tagSelect) tagSelect.value = "";
+      updateStepUI(1);
+      if (formError) {
+        formError.classList.add("hidden");
+        formError.textContent = "";
+      }
+      if (modal) {
+        modal.classList.remove("hidden");
+        modal.classList.add("flex");
+      }
+    }
+
+    function openEditModal(student: any) {
+      if (modalTitle) modalTitle.textContent = "Edit Data & Ganti Kartu RFID";
+      if (idInput) idInput.value = student.id || "";
+      if (nameInput) nameInput.value = student.name || "";
+      if (identInput) identInput.value = student.identifier || "";
+      if (addressInput)
+        addressInput.value = student.address || "Padang Ratu, Lampung";
+      if (birthInput) birthInput.value = student.birthDate || "";
+      if (emailInput) emailInput.value = student.email || "";
+      if (phoneInput) phoneInput.value = student.phone || "";
+      const r = (
+        student.role === "admin"
+          ? "admin"
+          : student.role === "guru"
+            ? "guru"
+            : "siswa"
+      ) as "siswa" | "guru" | "admin";
+      setRole(r);
+      if (catSelect)
+        catSelect.value =
+          student.category ||
+          (r === "admin" ? "admin" : r === "guru" ? "guru" : "rpl");
+      if (classInput) classInput.value = student.className || "";
+      if (uidInput) {
+        if (r === "admin") {
+          uidInput.value = "";
+          uidInput.placeholder =
+            "Terkunci di Database (Hanya bisa dicek via Turso)";
+          uidInput.disabled = true;
+        } else {
+          uidInput.value = student.rfidUid || "";
+          uidInput.placeholder = "Tempel kartu RFID atau klik Generate";
+          uidInput.disabled = false;
+        }
+      }
+      if (btnGenUid) btnGenUid.classList.toggle("hidden", r === "admin");
+      const tagSelect = document.getElementById(
+        "student-tag-select",
+      ) as HTMLSelectElement;
+      if (tagSelect) tagSelect.value = student.tag || "";
+      resetAvatar();
+      updateStepUI(1);
+      if (formError) {
+        formError.classList.add("hidden");
+        formError.textContent = "";
+      }
+      if (modal) {
+        modal.classList.remove("hidden");
+        modal.classList.add("flex");
+      }
+    }
+
+    function closeModal() {
+      if (modal) {
+        modal.classList.add("hidden");
+        modal.classList.remove("flex");
+      }
+    }
+
+    btnOpenModal?.addEventListener("click", openAddModal);
+    btnCloseModal?.addEventListener("click", closeModal);
+    btnCancelModal?.addEventListener("click", closeModal);
+
+    // Generate random 9-digit decimal UID helper
+    btnGenUid?.addEventListener("click", () => {
+      const rand = Math.floor(100000000 + Math.random() * 900000000).toString();
+      if (uidInput) uidInput.value = rand;
+    });
+
+    // Submit Form (Save/Edit)
+    studentForm?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (formError) formError.classList.add("hidden");
+
+      const phoneVal = phoneInput?.value?.trim() || "";
+      const phoneCheck = validateWhatsApp(phoneVal);
+      if (!phoneCheck.valid) {
+        if (formError) {
+          formError.textContent = phoneCheck.message;
+          formError.classList.remove("hidden");
+        }
+        updateStepUI(3);
+        phoneInput?.focus();
+        return;
+      }
+
+      const uid = uidInput?.value?.trim().toUpperCase() || "";
+      const isExistingAdmin = selectedRole === "admin" && !!idInput?.value;
+      if (!uid && !isExistingAdmin) {
+        if (formError) {
+          formError.textContent =
+            "Nomor UID Kartu RFID wajib diisi (ketik manual, scan kartu, atau klik Acak UID Test).";
+          formError.classList.remove("hidden");
+        }
+        uidInput?.focus();
+        return;
+      }
+
+      const payload = {
+        id: idInput?.value || undefined,
+        name: nameInput?.value?.trim() || "",
+        identifier: identInput?.value?.trim() || "",
+        role: selectedRole,
+        category:
+          catSelect?.value ||
+          (selectedRole === "admin"
+            ? "admin"
+            : selectedRole === "guru"
+              ? "guru"
+              : "rpl"),
+        className: classInput?.value?.trim() || "",
+        rfidUid: uid,
+        tag:
+          (document.getElementById("student-tag-select") as HTMLSelectElement)
+            ?.value || "",
+        address: addressInput?.value?.trim() || "Padang Ratu, Lampung",
+        birthDate: birthInput?.value?.trim() || "",
+        email: emailInput?.value?.trim() || "",
+        phone: phoneInput?.value?.trim() || "",
+      };
+
+      try {
+        const res = await fetch("/api/students", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const result = await res.json();
+        if (!res.ok) {
+          if (formError) {
+            formError.textContent = result.message || "Gagal menyimpan data";
+            formError.classList.remove("hidden");
+          }
+          return;
+        }
+        closeModal();
+        await loadData();
+      } catch (err: any) {
+        if (formError) {
+          formError.textContent = err.message || "Terjadi kesalahan sistem";
+          formError.classList.remove("hidden");
+        }
+      }
+    });
+
+    async function deleteStudentItem(id: string) {
+      try {
+        const res = await fetch("/api/students", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id }),
+        });
+        if (res.ok) {
+          await loadData();
+        }
+      } catch (e) {
+        console.error("Gagal menghapus civitas:", e);
+      }
+    }
+
+    // Tab Filters
+    document.querySelectorAll(".tab-civitas").forEach((tab) => {
+      tab.addEventListener("click", () => {
+        document.querySelectorAll(".tab-civitas").forEach((t) => {
+          t.className =
+            "tab-civitas px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all duration-200 whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-blue-600";
+        });
+        tab.className =
+          "tab-civitas px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 whitespace-nowrap bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-blue-600";
+        activeFilter = (tab as HTMLElement).dataset.filter || "all";
+        renderTable();
+      });
+    });
+
+    // Stat Cards Filter click
+    document
+      .getElementById("card-filter-akl")
+      ?.addEventListener("click", () => {
+        activeFilter = "akl";
+        triggerTabStyle("akl");
+        renderTable();
+      });
+    document
+      .getElementById("card-filter-rpl")
+      ?.addEventListener("click", () => {
+        activeFilter = "rpl";
+        triggerTabStyle("rpl");
+        renderTable();
+      });
+    document
+      .getElementById("card-filter-guru")
+      ?.addEventListener("click", () => {
+        activeFilter = "guru";
+        triggerTabStyle("guru");
+        renderTable();
+      });
+
+    function triggerTabStyle(filter: string) {
+      document.querySelectorAll(".tab-civitas").forEach((t) => {
+        const f = (t as HTMLElement).dataset.filter;
+        if (f === filter) {
+          t.className =
+            "tab-civitas px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 whitespace-nowrap bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-blue-600";
+        } else {
+          t.className =
+            "tab-civitas px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all duration-200 whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-blue-600";
+        }
+      });
+    }
+
+    // Instant Search
+    searchInput?.addEventListener("input", (e) => {
+      searchQuery = (e.target as HTMLInputElement).value;
+      renderTable();
+    });
+
+    // SSE Realtime Listener
+    window.addEventListener("attendance-updated", loadData);
+
+    // Initial Load
+    loadData();
+  </script>
+</Layout>

@@ -1,0 +1,1812 @@
+---
+/**
+ * @file src/pages/jadwal.astro
+ * @description Halaman Perencanaan Agenda & Jadwal Sekolah (Tandai Tanggal)
+ * Fokus pada perencanaan agenda, penandaan tanggal, kalender interaktif,
+ * dan tampilan kartu sesi yang ringkas, bersih, dan informatif.
+ */
+export const prerender = false;
+
+const authSession = Astro.cookies.get('auth_session')?.value;
+if (!authSession) {
+  return Astro.redirect('/login');
+}
+if (authSession === 'siswa') {
+  return Astro.redirect('/profil-siswa');
+}
+
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Jadwal & Agenda" activeNav="jadwal-agenda">
+  <!-- Content Container Card -->
+  <div class="bg-white rounded-3xl p-5 sm:p-7 shadow-xs border border-slate-200/80 space-y-6">
+    <!-- Top Action Bar: Navigasi Minggu & Tombol Tandai Agenda -->
+    <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-5">
+      <!-- Week Navigation -->
+      <div class="flex items-center gap-3">
+        <div class="flex items-center gap-1.5 bg-slate-100/90 rounded-2xl p-1 border border-slate-200/70">
+          <button
+            type="button"
+            id="btn-prev-week"
+            class="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-white text-slate-600 transition-all active:scale-95 shadow-2xs"
+            title="Minggu Sebelumnya"
+          >
+            <span class="material-symbols-outlined text-sm">chevron_left</span>
+          </button>
+          <span id="current-week-label" class="font-bold text-slate-800 text-xs sm:text-sm px-3 flex items-center gap-2">
+            <span class="material-symbols-outlined text-blue-600 text-base">calendar_month</span>
+            <span id="week-date-range">Memuat rentang tanggal...</span>
+          </span>
+          <button
+            type="button"
+            id="btn-next-week"
+            class="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-white text-slate-600 transition-all active:scale-95 shadow-2xs"
+            title="Minggu Berikutnya"
+          >
+            <span class="material-symbols-outlined text-sm">chevron_right</span>
+          </button>
+        </div>
+
+        <button
+          type="button"
+          id="btn-today-week"
+          class="px-3 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl transition-all shadow-2xs"
+        >
+          Hari Ini
+        </button>
+      </div>
+
+      <!-- Action Button: Tandai Agenda Baru -->
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          id="btn-open-agenda-modal"
+          class="px-5 py-2.5 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs shadow-md shadow-blue-500/20 flex items-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98]"
+        >
+          <span class="material-symbols-outlined text-base">bookmark_add</span>
+          <span>+ Tandai Agenda Baru</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Schedule Grid Layout -->
+    <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+      <!-- Left Column: Mini Calendar & Filter Categories (3 cols) -->
+      <div class="xl:col-span-3 space-y-5 flex-shrink-0">
+        <!-- Mini Month Calendar Interaktif -->
+        <div class="p-4 rounded-3xl bg-slate-50/80 border border-slate-200/80 space-y-2">
+          <div class="flex items-center justify-between pb-2 border-b border-slate-200/60">
+            <h3 id="mini-calendar-title" class="text-xs font-black text-slate-800 uppercase tracking-wider">
+              Oktober 2026
+            </h3>
+            <div class="flex items-center gap-1">
+              <button
+                type="button"
+                id="btn-prev-month"
+                class="w-6 h-6 rounded-lg text-slate-500 hover:bg-white hover:text-slate-800 flex items-center justify-center transition-colors"
+                title="Bulan Sebelumnya"
+              >
+                <span class="material-symbols-outlined text-xs">chevron_left</span>
+              </button>
+              <button
+                type="button"
+                id="btn-next-month"
+                class="w-6 h-6 rounded-lg text-slate-500 hover:bg-white hover:text-slate-800 flex items-center justify-center transition-colors"
+                title="Bulan Berikutnya"
+              >
+                <span class="material-symbols-outlined text-xs">chevron_right</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-7 text-center text-[10px] font-bold text-slate-400 py-1">
+            <span>M</span><span>S</span><span>S</span><span>R</span><span>K</span><span>J</span><span>S</span>
+          </div>
+          <div id="mini-calendar-grid" class="grid grid-cols-7 text-center text-xs font-semibold gap-y-1 pt-1">
+            <!-- Populated via script -->
+          </div>
+          <p class="text-[10px] text-slate-400 text-center pt-2">
+            💡 <span class="font-medium">Klik tanggal untuk langsung menandai rencana agenda.</span>
+          </p>
+        </div>
+
+        <!-- Upcoming Alert Box (Agenda Hari Ini / Tanggal Terpilih) -->
+        <div id="upcoming-alert-box" class="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white shadow-lg shadow-blue-500/20 relative overflow-hidden transition-all">
+          <div class="relative z-10 space-y-2">
+            <div class="flex items-center justify-between">
+              <div>
+                <span id="upcoming-badge" class="text-[9px] font-extrabold text-blue-200 tracking-wider uppercase block">Agenda Hari Ini</span>
+                <span id="upcoming-date-label" class="text-[10px] text-blue-100/90 font-bold">Jumat, 30 Okt 2026</span>
+              </div>
+              <span id="upcoming-pulse-dot" class="w-2 h-2 rounded-full bg-white/40"></span>
+            </div>
+
+            <!-- Content Area (Dinamis: Ada Agenda vs Tidak Ada Agenda) -->
+            <div id="upcoming-content-area" class="space-y-1.5 pt-1">
+              <h4 id="upcoming-title" class="text-xs sm:text-sm font-black text-white tracking-tight line-clamp-2">
+                Tidak Ada Agenda Hari Ini
+              </h4>
+              <div id="upcoming-time-row" class="hidden items-center gap-1.5 text-[11px] text-blue-100 font-medium">
+                <span class="material-symbols-outlined text-xs">schedule</span>
+                <span id="upcoming-time">-</span>
+              </div>
+              <div id="upcoming-info" class="text-[11px] text-blue-100 pt-1 border-t border-blue-400/30">
+                Belum ada agenda atau kegiatan yang ditandai untuk hari ini.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Category Filters -->
+        <div class="p-4 rounded-3xl bg-slate-50/80 border border-slate-200/80 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-800">Kategori Rencana</span>
+            <span id="total-schedules-badge" class="text-[10px] font-bold text-slate-500">0 Agenda</span>
+          </div>
+          <div class="space-y-2 text-xs font-semibold text-slate-700">
+            <label class="flex items-center gap-2 cursor-pointer hover:text-slate-900 transition-colors">
+              <input type="checkbox" checked value="kbm" class="cat-filter rounded text-teal-600 focus:ring-teal-500 w-3.5 h-3.5 border-slate-300" />
+              <span class="inline-flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-teal-500"></span>
+                <span>KBM & Praktikum Kejuruan</span>
+              </span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer hover:text-slate-900 transition-colors">
+              <input type="checkbox" checked value="rapat" class="cat-filter rounded text-rose-500 focus:ring-rose-500 w-3.5 h-3.5 border-slate-300" />
+              <span class="inline-flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                <span>Rapat & Dinas Sekolah</span>
+              </span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer hover:text-slate-900 transition-colors">
+              <input type="checkbox" checked value="lsp" class="cat-filter rounded text-purple-600 focus:ring-purple-500 w-3.5 h-3.5 border-slate-300" />
+              <span class="inline-flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-purple-500"></span>
+                <span>Uji Kompetensi UKK / LSP</span>
+              </span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer hover:text-slate-900 transition-colors">
+              <input type="checkbox" checked value="khusus" class="cat-filter rounded text-amber-500 focus:ring-amber-500 w-3.5 h-3.5 border-slate-300" />
+              <span class="inline-flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                <span>Upacara / Acara Khusus / Libur</span>
+              </span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Interactive Weekly Timeline (9 cols) -->
+      <div class="xl:col-span-9 overflow-x-auto">
+        <div class="min-w-[700px] space-y-3">
+          <!-- Day Headers (Senin s/d Jumat dengan Tanggal Nyata) -->
+          <div class="grid grid-cols-5 gap-3" id="timeline-day-headers">
+            <!-- Populated via script with accurate dates -->
+          </div>
+
+          <!-- Dynamic Schedule Column Grid -->
+          <div class="grid grid-cols-5 gap-3 items-start min-h-[460px]" id="timeline-columns-container">
+            <!-- Day 0: Senin -->
+            <div class="space-y-2.5 p-2 bg-slate-50/60 rounded-2xl min-h-[300px] flex flex-col justify-between" id="day-col-senin">
+              <div class="space-y-2 items-container" id="day-items-senin"></div>
+            </div>
+            <!-- Day 1: Selasa -->
+            <div class="space-y-2.5 p-2 bg-slate-50/60 rounded-2xl min-h-[300px] flex flex-col justify-between" id="day-col-selasa">
+              <div class="space-y-2 items-container" id="day-items-selasa"></div>
+            </div>
+            <!-- Day 2: Rabu -->
+            <div class="space-y-2.5 p-2 bg-slate-50/60 rounded-2xl min-h-[300px] flex flex-col justify-between" id="day-col-rabu">
+              <div class="space-y-2 items-container" id="day-items-rabu"></div>
+            </div>
+            <!-- Day 3: Kamis -->
+            <div class="space-y-2.5 p-2 bg-slate-50/60 rounded-2xl min-h-[300px] flex flex-col justify-between" id="day-col-kamis">
+              <div class="space-y-2 items-container" id="day-items-kamis"></div>
+            </div>
+            <!-- Day 4: Jumat -->
+            <div class="space-y-2.5 p-2 bg-slate-50/60 rounded-2xl min-h-[300px] flex flex-col justify-between" id="day-col-jumat">
+              <div class="space-y-2 items-container" id="day-items-jumat"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Dialog: Buat / Edit Agenda (Gaya Desain Multi-Step Sesuai Pendaftaran Civitas) -->
+  <div id="agenda-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md hidden items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white rounded-[2.5rem] max-w-xl w-full p-6 sm:p-9 shadow-2xl border border-slate-100 space-y-6 relative overflow-hidden animate-in fade-in zoom-in-95 duration-200 my-8">
+      <!-- Decorative Background Orbs -->
+      <div class="absolute -top-14 -right-14 w-40 h-40 rounded-full bg-blue-500/10 blur-2xl pointer-events-none"></div>
+      <div class="absolute -bottom-14 -left-14 w-40 h-40 rounded-full bg-indigo-500/10 blur-2xl pointer-events-none"></div>
+
+      <!-- Top Header -->
+      <div class="flex items-center justify-between relative z-10">
+        <div class="w-8"></div>
+        <div class="text-center">
+          <h2 id="modal-agenda-title" class="text-lg sm:text-xl font-black text-slate-900 tracking-tight">Perencanaan Agenda</h2>
+          <p class="text-[11px] text-slate-400 font-medium">SMK Ma'arif Padang Ratu</p>
+        </div>
+        <button id="btn-close-agenda-modal" type="button" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors">
+          <span class="material-symbols-outlined text-sm">close</span>
+        </button>
+      </div>
+
+      <!-- Stepper Progress Bar (1 - 2 - 3 - 4) Sesuai Gaya Pendaftaran Civitas -->
+      <div class="relative z-10 px-2 sm:px-6">
+        <div class="flex items-center justify-between relative">
+          <!-- Line connector -->
+          <div class="absolute top-3.5 left-6 right-6 h-0.5 bg-slate-200 -z-10">
+            <div id="agenda-stepper-progress-line" class="h-full bg-blue-600 transition-all duration-300" style="width: 0%"></div>
+          </div>
+
+          <!-- Step 1 -->
+          <div class="agenda-step-indicator flex flex-col items-center gap-1 cursor-pointer" data-step="1">
+            <div id="agenda-step-badge-1" class="w-7 h-7 rounded-full bg-blue-600 text-white font-black text-xs flex items-center justify-center shadow-md shadow-blue-500/30 transition-all">
+              1
+            </div>
+            <span id="agenda-step-label-1" class="text-[10px] font-bold text-blue-700 whitespace-nowrap">Identitas</span>
+          </div>
+
+          <!-- Step 2 -->
+          <div class="agenda-step-indicator flex flex-col items-center gap-1 cursor-pointer" data-step="2">
+            <div id="agenda-step-badge-2" class="w-7 h-7 rounded-full bg-slate-100 text-slate-400 font-bold text-xs flex items-center justify-center transition-all">
+              2
+            </div>
+            <span id="agenda-step-label-2" class="text-[10px] font-semibold text-slate-400 whitespace-nowrap">Privasi</span>
+          </div>
+
+          <!-- Step 3 -->
+          <div class="agenda-step-indicator flex flex-col items-center gap-1 cursor-pointer" data-step="3">
+            <div id="agenda-step-badge-3" class="w-7 h-7 rounded-full bg-slate-100 text-slate-400 font-bold text-xs flex items-center justify-center transition-all">
+              3
+            </div>
+            <span id="agenda-step-label-3" class="text-[10px] font-semibold text-slate-400 whitespace-nowrap">Waktu</span>
+          </div>
+
+          <!-- Step 4 -->
+          <div class="agenda-step-indicator flex flex-col items-center gap-1 cursor-pointer" data-step="4">
+            <div id="agenda-step-badge-4" class="w-7 h-7 rounded-full bg-slate-100 text-slate-400 font-bold text-xs flex items-center justify-center transition-all">
+              4
+            </div>
+            <span id="agenda-step-label-4" class="text-[10px] font-semibold text-slate-400 whitespace-nowrap">Detail</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Form Container -->
+      <form id="agenda-form" class="relative z-10 space-y-5">
+        <input type="hidden" id="agenda-id-input" value="" />
+        <input type="hidden" id="agenda-visibility-input" value="public" />
+        <input type="hidden" id="agenda-lead-days" value="0" />
+        <input type="hidden" id="agenda-duration-mode" value="single" />
+        <input type="hidden" id="agenda-category-input" value="kbm" />
+
+        <!-- ================= TAHAP 1: IDENTITAS AGENDA ================= -->
+        <div id="agenda-step-panel-1" class="agenda-step-panel space-y-4">
+          <div class="border-b border-slate-100 pb-3">
+            <h3 class="text-sm font-extrabold text-slate-900">Kategori & Nama Agenda</h3>
+            <p class="text-[11px] text-slate-500">Tentukan jenis kegiatan dan nama rencana agenda sekolah.</p>
+          </div>
+
+          <!-- Kategori Cards (Gaya Pendaftaran Civitas Sesuai Foto) -->
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1.5">Pilih Kategori Agenda *</label>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-0.5">
+              <!-- KBM -->
+              <div id="cat-card-kbm" class="agenda-cat-card cursor-pointer p-3.5 rounded-2xl border-2 border-blue-600 bg-blue-50/60 hover:bg-blue-50 transition-all duration-200 relative group shadow-sm flex flex-col justify-between" data-cat="kbm">
+                <div class="flex items-start justify-between">
+                  <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-teal-600 to-emerald-600 text-white flex items-center justify-center shadow-md shadow-teal-500/20 group-hover:scale-105 transition-transform">
+                    <span class="material-symbols-outlined text-xl">school</span>
+                  </div>
+                  <div id="cat-radio-kbm" class="w-5 h-5 rounded-full border-2 border-blue-600 bg-blue-600 text-white flex items-center justify-center text-[10px] font-black">
+                    ✓
+                  </div>
+                </div>
+                <div class="mt-2.5">
+                  <div class="flex items-center gap-1.5 mb-0.5">
+                    <h4 class="text-xs font-black text-slate-900">KBM Reguler</h4>
+                    <span class="text-[8px] font-bold text-teal-700 bg-teal-100 px-1.5 py-0.2 rounded-full">Akademik</span>
+                  </div>
+                  <p class="text-[10px] text-slate-600 leading-relaxed">
+                    Kegiatan belajar mengajar & jam kelas.
+                  </p>
+                </div>
+              </div>
+
+              <!-- Rapat -->
+              <div id="cat-card-rapat" class="agenda-cat-card cursor-pointer p-3.5 rounded-2xl border border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60 transition-all duration-200 relative group flex flex-col justify-between" data-cat="rapat">
+                <div class="flex items-start justify-between">
+                  <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-rose-500 to-red-600 text-white flex items-center justify-center shadow-md shadow-rose-500/20 group-hover:scale-105 transition-transform">
+                    <span class="material-symbols-outlined text-xl">groups</span>
+                  </div>
+                  <div id="cat-radio-rapat" class="w-5 h-5 rounded-full border-2 border-slate-300 bg-white text-transparent flex items-center justify-center text-[10px] font-black">
+                    ✓
+                  </div>
+                </div>
+                <div class="mt-2.5">
+                  <div class="flex items-center gap-1.5 mb-0.5">
+                    <h4 class="text-xs font-black text-slate-900">Rapat & Koordinasi</h4>
+                    <span class="text-[8px] font-bold text-rose-700 bg-rose-100 px-1.5 py-0.2 rounded-full">Rapat</span>
+                  </div>
+                  <p class="text-[10px] text-slate-600 leading-relaxed">
+                    Pertemuan dewan guru, wali, dan staf.
+                  </p>
+                </div>
+              </div>
+
+              <!-- UKK / LSP -->
+              <div id="cat-card-lsp" class="agenda-cat-card cursor-pointer p-3.5 rounded-2xl border border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60 transition-all duration-200 relative group flex flex-col justify-between" data-cat="lsp">
+                <div class="flex items-start justify-between">
+                  <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-purple-500/20 group-hover:scale-105 transition-transform">
+                    <span class="material-symbols-outlined text-xl">verified</span>
+                  </div>
+                  <div id="cat-radio-lsp" class="w-5 h-5 rounded-full border-2 border-slate-300 bg-white text-transparent flex items-center justify-center text-[10px] font-black">
+                    ✓
+                  </div>
+                </div>
+                <div class="mt-2.5">
+                  <div class="flex items-center gap-1.5 mb-0.5">
+                    <h4 class="text-xs font-black text-slate-900">UKK & Sertifikasi</h4>
+                    <span class="text-[8px] font-bold text-purple-700 bg-purple-100 px-1.5 py-0.2 rounded-full">Kejuruan</span>
+                  </div>
+                  <p class="text-[10px] text-slate-600 leading-relaxed">
+                    Uji kompetensi keahlian dan asesmen.
+                  </p>
+                </div>
+              </div>
+
+              <!-- Khusus -->
+              <div id="cat-card-khusus" class="agenda-cat-card cursor-pointer p-3.5 rounded-2xl border border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60 transition-all duration-200 relative group flex flex-col justify-between" data-cat="khusus">
+                <div class="flex items-start justify-between">
+                  <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-600 text-white flex items-center justify-center shadow-md shadow-amber-500/20 group-hover:scale-105 transition-transform">
+                    <span class="material-symbols-outlined text-xl">event</span>
+                  </div>
+                  <div id="cat-radio-khusus" class="w-5 h-5 rounded-full border-2 border-slate-300 bg-white text-transparent flex items-center justify-center text-[10px] font-black">
+                    ✓
+                  </div>
+                </div>
+                <div class="mt-2.5">
+                  <div class="flex items-center gap-1.5 mb-0.5">
+                    <h4 class="text-xs font-black text-slate-900">Agenda Khusus</h4>
+                    <span class="text-[8px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.2 rounded-full">Event</span>
+                  </div>
+                  <p class="text-[10px] text-slate-600 leading-relaxed">
+                    Upacara, peringatan hari besar, & tamu.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-1">
+            <label for="agenda-title-input" class="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1.5">Nama Rencana / Agenda *</label>
+            <input
+              id="agenda-title-input"
+              required
+              placeholder="Contoh: Rapat Koordinasi Kurikulum, UKK Praktik RPL..."
+              class="w-full text-xs font-medium text-slate-800 bg-slate-50 border border-slate-200/90 rounded-2xl px-4 py-3 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-all shadow-2xs"
+            />
+          </div>
+        </div>
+
+        <!-- ================= TAHAP 2: TINGKAT PRIVASI ================= -->
+        <div id="agenda-step-panel-2" class="agenda-step-panel space-y-4 hidden">
+          <div class="border-b border-slate-100 pb-3">
+            <h3 class="text-sm font-extrabold text-slate-900">Pilih Privasi Agenda</h3>
+            <p class="text-[11px] text-slate-500">Tentukan siapa yang dapat melihat agenda kegiatan ini.</p>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+            <!-- Pilihan Publik Card -->
+            <div id="agenda-vis-card-public" class="agenda-vis-card cursor-pointer p-3.5 rounded-2xl border-2 border-blue-600 bg-blue-50/60 hover:bg-blue-50 transition-all duration-200 relative group shadow-sm flex flex-col justify-between" data-vis="public">
+              <div class="flex items-start justify-between">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform">
+                  <span class="material-symbols-outlined text-xl">public</span>
+                </div>
+                <div id="agenda-radio-public" class="w-5 h-5 rounded-full border-2 border-blue-600 bg-blue-600 text-white flex items-center justify-center text-[10px] font-black">
+                  ✓
+                </div>
+              </div>
+              <div class="mt-3">
+                <div class="flex items-center gap-1.5 mb-1">
+                  <h4 class="text-xs font-black text-slate-900">Publik</h4>
+                  <span class="text-[8px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded-full">Semua Civitas</span>
+                </div>
+                <p class="text-[10px] text-slate-600 leading-relaxed">
+                  Tampil untuk siswa, guru, dan admin di kalender serta profil.
+                </p>
+              </div>
+            </div>
+
+            <!-- Pilihan Guru Card -->
+            <div id="agenda-vis-card-guru" class="agenda-vis-card cursor-pointer p-3.5 rounded-2xl border border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60 transition-all duration-200 relative group flex flex-col justify-between" data-vis="guru">
+              <div class="flex items-start justify-between">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-600 to-amber-700 text-white flex items-center justify-center shadow-md shadow-amber-900/10 group-hover:scale-105 transition-transform">
+                  <span class="material-symbols-outlined text-xl">lock</span>
+                </div>
+                <div id="agenda-radio-guru" class="w-5 h-5 rounded-full border-2 border-slate-300 bg-white text-transparent flex items-center justify-center text-[10px] font-black">
+                  ✓
+                </div>
+              </div>
+              <div class="mt-3">
+                <div class="flex items-center gap-1.5 mb-1">
+                  <h4 class="text-xs font-black text-slate-900">Khusus Guru</h4>
+                  <span class="text-[8px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded-full">Internal Guru</span>
+                </div>
+                <p class="text-[10px] text-slate-600 leading-relaxed">
+                  Hanya untuk guru dan admin sekolah. Dirahasiakan dari siswa.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pilihan Waktu Tampil ke Siswa (Khusus Publik) -->
+          <div id="box-lead-days" class="space-y-1.5 pt-1">
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-700">Waktu Tampil di Profil Siswa</label>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <button
+                type="button"
+                class="btn-lead-day py-2 px-2.5 rounded-xl border-2 border-blue-600 bg-blue-50/70 text-blue-800 text-[11px] font-bold text-center transition-all shadow-2xs flex flex-col items-center gap-0.5"
+                data-days="0"
+              >
+                <span>Langsung</span>
+                <span class="text-[9px] font-normal text-blue-600">Sejak dibuat</span>
+              </button>
+              <button
+                type="button"
+                class="btn-lead-day py-2 px-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 hover:border-slate-300 text-[11px] font-bold text-center transition-all flex flex-col items-center gap-0.5"
+                data-days="1"
+              >
+                <span>H-1</span>
+                <span class="text-[9px] font-normal text-slate-400">1 hari sblm</span>
+              </button>
+              <button
+                type="button"
+                class="btn-lead-day py-2 px-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 hover:border-slate-300 text-[11px] font-bold text-center transition-all flex flex-col items-center gap-0.5"
+                data-days="3"
+              >
+                <span>H-3</span>
+                <span class="text-[9px] font-normal text-slate-400">3 hari sblm</span>
+              </button>
+              <button
+                type="button"
+                class="btn-lead-day py-2 px-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 hover:border-slate-300 text-[11px] font-bold text-center transition-all flex flex-col items-center gap-0.5"
+                data-days="7"
+              >
+                <span>H-7</span>
+                <span class="text-[9px] font-normal text-slate-400">1 pekan sblm</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 text-[11px] text-slate-600 flex items-center gap-2">
+            <span class="material-symbols-outlined text-blue-600 text-base">info</span>
+            <span>Agenda publik otomatis muncul pada profil siswa & jadwal mingguan.</span>
+          </div>
+        </div>
+
+        <!-- ================= TAHAP 3: JANGKA WAKTU & JAM ================= -->
+        <div id="agenda-step-panel-3" class="agenda-step-panel space-y-4 hidden">
+          <div class="border-b border-slate-100 pb-3">
+            <h3 class="text-sm font-extrabold text-slate-900">Jangka Waktu Pelaksanaan</h3>
+            <p class="text-[11px] text-slate-500">Tentukan durasi satu hari atau beberapa hari pelaksanaan.</p>
+          </div>
+
+          <!-- Mode Selection Cards Sesuai Gaya Pendaftaran Civitas -->
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1.5">Model Durasi Agenda *</label>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-0.5">
+              <!-- Mode 1 Hari -->
+              <div id="mode-card-single" class="agenda-mode-card cursor-pointer p-3.5 rounded-2xl border-2 border-blue-600 bg-blue-50/60 hover:bg-blue-50 transition-all duration-200 relative group shadow-sm flex flex-col justify-between" data-mode="single">
+                <div class="flex items-start justify-between">
+                  <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform">
+                    <span class="material-symbols-outlined text-xl">today</span>
+                  </div>
+                  <div id="mode-radio-single" class="w-5 h-5 rounded-full border-2 border-blue-600 bg-blue-600 text-white flex items-center justify-center text-[10px] font-black">
+                    ✓
+                  </div>
+                </div>
+                <div class="mt-2.5">
+                  <div class="flex items-center gap-1.5 mb-0.5">
+                    <h4 class="text-xs font-black text-slate-900">1 Hari Saja</h4>
+                    <span class="text-[8px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.2 rounded-full">Harian</span>
+                  </div>
+                  <p class="text-[10px] text-slate-600 leading-relaxed">
+                    Selesai di hari yang sama pada satu tanggal.
+                  </p>
+                </div>
+              </div>
+
+              <!-- Mode Rentang Hari -->
+              <div id="mode-card-range" class="agenda-mode-card cursor-pointer p-3.5 rounded-2xl border border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60 transition-all duration-200 relative group flex flex-col justify-between" data-mode="range">
+                <div class="flex items-start justify-between">
+                  <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-purple-500/20 group-hover:scale-105 transition-transform">
+                    <span class="material-symbols-outlined text-xl">date_range</span>
+                  </div>
+                  <div id="mode-radio-range" class="w-5 h-5 rounded-full border-2 border-slate-300 bg-white text-transparent flex items-center justify-center text-[10px] font-black">
+                    ✓
+                  </div>
+                </div>
+                <div class="mt-2.5">
+                  <div class="flex items-center gap-1.5 mb-0.5">
+                    <h4 class="text-xs font-black text-slate-900">Rentang Hari</h4>
+                    <span class="text-[8px] font-bold text-purple-700 bg-purple-100 px-1.5 py-0.2 rounded-full">Multi-Hari</span>
+                  </div>
+                  <p class="text-[10px] text-slate-600 leading-relaxed">
+                    Berlangsung beberapa hari (tanggal mulai s/d selesai).
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Single Date Input -->
+          <div id="box-single-date">
+            <label for="agenda-date-input" class="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1.5">Tanggal Pelaksanaan *</label>
+            <input
+              id="agenda-date-input"
+              type="date"
+              class="w-full text-xs font-semibold text-slate-800 bg-slate-50 border border-slate-200/90 rounded-2xl px-4 py-3 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-all shadow-2xs"
+            />
+          </div>
+
+          <!-- Range Date Inputs -->
+          <div id="box-range-date" class="hidden grid grid-cols-2 gap-3">
+            <div>
+              <label for="agenda-start-date" class="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1.5">Tanggal Mulai *</label>
+              <input
+                id="agenda-start-date"
+                type="date"
+                class="w-full text-xs font-semibold text-slate-800 bg-slate-50 border border-slate-200/90 rounded-2xl px-3.5 py-3 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-all shadow-2xs"
+              />
+            </div>
+            <div>
+              <label for="agenda-end-date" class="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1.5">Tanggal Selesai *</label>
+              <input
+                id="agenda-end-date"
+                type="date"
+                class="w-full text-xs font-semibold text-slate-800 bg-slate-50 border border-slate-200/90 rounded-2xl px-3.5 py-3 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-all shadow-2xs"
+              />
+            </div>
+          </div>
+
+          <!-- Jam Pelaksanaan -->
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label for="agenda-time-start" class="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1.5">Jam Mulai</label>
+              <input id="agenda-time-start" type="time" value="08:00" class="w-full text-xs font-mono font-bold text-slate-800 bg-slate-50 border border-slate-200/90 rounded-2xl px-4 py-3 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-all shadow-2xs" />
+            </div>
+            <div>
+              <label for="agenda-time-end" class="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1.5">Jam Selesai</label>
+              <input id="agenda-time-end" type="time" value="09:30" class="w-full text-xs font-mono font-bold text-slate-800 bg-slate-50 border border-slate-200/90 rounded-2xl px-4 py-3 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-all shadow-2xs" />
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= TAHAP 4: DETAIL & VERIFIKASI ================= -->
+        <div id="agenda-step-panel-4" class="agenda-step-panel space-y-4 hidden">
+          <div class="border-b border-slate-100 pb-3">
+            <h3 class="text-sm font-extrabold text-slate-900">Lokasi & Verifikasi</h3>
+            <p class="text-[11px] text-slate-500">Lengkapi detail ruangan dan periksa ringkasan agenda.</p>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div>
+              <label for="agenda-room-input" class="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1.5">Lokasi / Ruang</label>
+              <input id="agenda-room-input" list="datalist-rooms" placeholder="Lab Komputer 01 / Ruang Guru" class="w-full text-xs font-medium text-slate-800 bg-slate-50 border border-slate-200/90 rounded-2xl px-4 py-3 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-all shadow-2xs" />
+              <datalist id="datalist-rooms">
+                <option value="Ruang KBM"></option>
+                <option value="Lab Komputer 1"></option>
+                <option value="Lab Komputer 2"></option>
+                <option value="Bengkel TKJ"></option>
+                <option value="Bengkel RPL"></option>
+                <option value="Ruang Guru"></option>
+                <option value="Lapangan Utama"></option>
+                <option value="Aula Sekolah"></option>
+              </datalist>
+            </div>
+            <div>
+              <label for="agenda-class-input" class="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1.5">Sasaran / Rombel</label>
+              <input id="agenda-class-input" list="datalist-classes" placeholder="XII RPL / Semua Guru" class="w-full text-xs font-medium text-slate-800 bg-slate-50 border border-slate-200/90 rounded-2xl px-4 py-3 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-all shadow-2xs" />
+              <datalist id="datalist-classes">
+                <option value="Semua Civitas"></option>
+                <option value="Semua Siswa"></option>
+                <option value="Dewan Guru"></option>
+                <option value="X RPL"></option>
+                <option value="XI RPL"></option>
+                <option value="XII RPL"></option>
+                <option value="X AKL"></option>
+                <option value="XI AKL"></option>
+                <option value="XII AKL"></option>
+                <option value="Kelas XII"></option>
+              </datalist>
+            </div>
+          </div>
+
+          <div>
+            <label for="agenda-instructor-input" class="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1.5">PJ / Pengampu (Opsional)</label>
+            <input id="agenda-instructor-input" list="datalist-instructors" placeholder="Nama Guru / Penanggung Jawab" class="w-full text-xs font-medium text-slate-800 bg-slate-50 border border-slate-200/90 rounded-2xl px-4 py-3 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-all shadow-2xs" />
+            <datalist id="datalist-instructors">
+              <option value="Kepala Sekolah"></option>
+              <option value="Waka Kesiswaan"></option>
+              <option value="Waka Kurikulum"></option>
+              <option value="Guru Pengampu"></option>
+            </datalist>
+          </div>
+
+          <!-- Ringkasan Data Sebelum Simpan Sesuai Gaya Pendaftaran Civitas -->
+          <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 text-xs space-y-2 font-medium text-slate-700">
+            <div class="flex justify-between items-center"><span class="text-slate-400">Nama Agenda:</span> <span id="summary-agenda-name" class="font-bold text-slate-900 truncate max-w-[200px]">-</span></div>
+            <div class="flex justify-between items-center"><span class="text-slate-400">Kategori & Privasi:</span> <span id="summary-agenda-vis" class="font-bold text-blue-700">-</span></div>
+            <div class="flex justify-between items-center"><span class="text-slate-400">Tampil ke Siswa:</span> <span id="summary-agenda-lead" class="font-bold text-blue-700">Langsung Tampil</span></div>
+            <div class="flex justify-between items-center"><span class="text-slate-400">Jadwal Tanggal:</span> <span id="summary-agenda-date" class="font-bold text-slate-800">-</span></div>
+            <div class="flex justify-between items-center"><span class="text-slate-400">Jam Pelaksanaan:</span> <span id="summary-agenda-time" class="font-bold text-slate-800">-</span></div>
+          </div>
+        </div>
+
+        <!-- Alert Error Message -->
+        <div id="agenda-form-error" class="hidden text-xs text-rose-700 bg-rose-50 border border-rose-200 p-3 rounded-2xl font-medium"></div>
+
+        <!-- Tombol Aksi Kapsul Sesuai Desain Foto (Save & Continue) -->
+        <div class="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-100">
+          <button type="button" id="btn-agenda-prev" class="hidden text-xs font-bold text-slate-600 hover:text-slate-900 px-4 py-2.5 rounded-full transition-colors">
+            ← Kembali
+          </button>
+          <div class="flex-1 sm:text-right w-full sm:w-auto">
+            <button type="button" id="btn-agenda-next" class="w-full sm:w-auto px-8 py-3 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs shadow-lg shadow-blue-500/25 hover:scale-[1.02] active:scale-[0.98] transition-all">
+              Lanjut ke Privasi →
+            </button>
+            <button type="submit" id="btn-submit-agenda-final" class="hidden w-full sm:w-auto px-8 py-3 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs shadow-lg shadow-blue-500/25 hover:scale-[1.02] active:scale-[0.98] transition-all">
+              Simpan Agenda ✓
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Dialog: Detail Lengkap Agenda (Popup saat Card Kalender Diklik) -->
+  <div id="agenda-detail-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md hidden items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white rounded-[2.5rem] max-w-md w-full p-6 sm:p-7 shadow-2xl border border-slate-100 space-y-5 relative overflow-hidden animate-in fade-in zoom-in-95 duration-200 my-8">
+      <div class="absolute -top-12 -right-12 w-32 h-32 rounded-full bg-blue-500/10 blur-xl pointer-events-none"></div>
+
+      <!-- Top Header Detail -->
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3 relative z-10">
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <span id="detail-category-badge" class="px-2.5 py-1 rounded-xl text-xs font-bold bg-teal-50 text-teal-800 border border-teal-200/60">KBM</span>
+          <span id="detail-vis-badge" class="px-2.5 py-1 rounded-xl text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200/60">Publik</span>
+          <span id="detail-range-badge" class="hidden px-2.5 py-1 rounded-xl text-xs font-bold bg-purple-50 text-purple-700 border border-purple-200/60">Multi-Hari</span>
+        </div>
+        <button id="btn-close-detail-modal" type="button" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors">
+          <span class="material-symbols-outlined text-sm">close</span>
+        </button>
+      </div>
+
+      <!-- Content Detail -->
+      <div class="space-y-4 relative z-10">
+        <div>
+          <h3 id="detail-agenda-title" class="text-base sm:text-lg font-black text-slate-900 leading-snug">-</h3>
+          <p class="text-[11px] text-slate-400 mt-0.5">SMK Ma'arif Padang Ratu</p>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/70 space-y-2.5 text-xs text-slate-700">
+          <div class="flex items-center gap-2.5">
+            <span class="material-symbols-outlined text-base text-blue-600 shrink-0">calendar_month</span>
+            <div>
+              <span class="text-slate-400 text-[10px] block font-medium">Jadwal Tanggal</span>
+              <span id="detail-agenda-date" class="font-bold text-slate-800">-</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-2.5">
+            <span class="material-symbols-outlined text-base text-blue-600 shrink-0">schedule</span>
+            <div>
+              <span class="text-slate-400 text-[10px] block font-medium">Waktu Pelaksanaan</span>
+              <span id="detail-agenda-time" class="font-bold text-slate-800">-</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-2.5">
+            <span class="material-symbols-outlined text-base text-blue-600 shrink-0">location_on</span>
+            <div>
+              <span class="text-slate-400 text-[10px] block font-medium">Lokasi / Ruang</span>
+              <span id="detail-agenda-room" class="font-bold text-slate-800">-</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-2.5">
+            <span class="material-symbols-outlined text-base text-blue-600 shrink-0">group</span>
+            <div>
+              <span class="text-slate-400 text-[10px] block font-medium">Sasaran / Rombel</span>
+              <span id="detail-agenda-class" class="font-bold text-slate-800">-</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-2.5">
+            <span class="material-symbols-outlined text-base text-blue-600 shrink-0">person</span>
+            <div>
+              <span class="text-slate-400 text-[10px] block font-medium">PJ / Pengampu</span>
+              <span id="detail-agenda-instructor" class="font-bold text-slate-800">-</span>
+            </div>
+          </div>
+          <div id="detail-lead-row" class="flex items-center gap-2.5">
+            <span class="material-symbols-outlined text-base text-blue-600 shrink-0">notifications_active</span>
+            <div>
+              <span class="text-slate-400 text-[10px] block font-medium">Pemberitahuan Siswa</span>
+              <span id="detail-agenda-lead" class="font-bold text-slate-800">Langsung Tampil</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Footer Detail -->
+      <div class="pt-2 flex items-center justify-between border-t border-slate-100 relative z-10">
+        <div class="flex items-center gap-2">
+          <button type="button" id="btn-detail-edit" class="px-3.5 py-2 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors flex items-center gap-1">
+            <span class="material-symbols-outlined text-xs">edit</span><span>Edit</span>
+          </button>
+          <button type="button" id="btn-detail-delete" class="px-3.5 py-2 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-xl transition-colors flex items-center gap-1">
+            <span class="material-symbols-outlined text-xs">delete</span><span>Hapus</span>
+          </button>
+        </div>
+        <button type="button" id="btn-detail-close-action" class="px-5 py-2 text-xs font-bold text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors">
+          Tutup
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let allSchedules: any[] = [];
+    const activeCategories = new Set(['kbm', 'rapat', 'lsp', 'khusus']);
+
+    // State tanggal aktif (default tanggal sistem hari ini)
+    let viewingDate = new Date();
+    let selectedDateForBox = new Date();
+    let miniCalYear = viewingDate.getFullYear();
+    let miniCalMonth = viewingDate.getMonth();
+
+    const daysList = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'];
+    const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    const monthShortNames = ['Okt', 'Nov', 'Des', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep'];
+
+    // DOM Elements
+    const modal = document.getElementById('agenda-modal');
+    const detailModal = document.getElementById('agenda-detail-modal');
+    const btnOpenModal = document.getElementById('btn-open-agenda-modal');
+    const btnCloseModal = document.getElementById('btn-close-agenda-modal');
+    const agendaForm = document.getElementById('agenda-form') as HTMLFormElement | null;
+    const formError = document.getElementById('agenda-form-error');
+    const modalTitle = document.getElementById('modal-agenda-title');
+
+    const idInput = document.getElementById('agenda-id-input') as HTMLInputElement | null;
+    const visibilityInput = document.getElementById('agenda-visibility-input') as HTMLInputElement | null;
+    const leadDaysInput = document.getElementById('agenda-lead-days') as HTMLInputElement | null;
+    const durationModeInput = document.getElementById('agenda-duration-mode') as HTMLInputElement | null;
+    const categoryInput = document.getElementById('agenda-category-input') as HTMLInputElement | null;
+    const titleInput = document.getElementById('agenda-title-input') as HTMLInputElement | null;
+    const dateInput = document.getElementById('agenda-date-input') as HTMLInputElement | null;
+    const startDateInput = document.getElementById('agenda-start-date') as HTMLInputElement | null;
+    const endDateInput = document.getElementById('agenda-end-date') as HTMLInputElement | null;
+    const timeStartInput = document.getElementById('agenda-time-start') as HTMLInputElement | null;
+    const timeEndInput = document.getElementById('agenda-time-end') as HTMLInputElement | null;
+    const roomInput = document.getElementById('agenda-room-input') as HTMLInputElement | null;
+    const classInput = document.getElementById('agenda-class-input') as HTMLInputElement | null;
+    const instInput = document.getElementById('agenda-instructor-input') as HTMLInputElement | null;
+
+    const btnAgendaPrev = document.getElementById('btn-agenda-prev');
+    const btnAgendaNext = document.getElementById('btn-agenda-next');
+    const btnSubmitAgendaFinal = document.getElementById('btn-submit-agenda-final');
+
+    let currentStep = 1;
+    let selectedDetailItem: any = null;
+
+    // Helper: cari tanggal Senin dari minggu yang sedang dilihat
+    function getMondayOfWeek(d: Date) {
+      const date = new Date(d);
+      const day = date.getDay();
+      const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+      return new Date(date.setDate(diff));
+    }
+
+    // Helper: format YYYY-MM-DD
+    function toDateString(d: Date) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    // Helper: format tanggal Indonesia
+    function formatIndoDate(d: Date) {
+      const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+      return `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+    }
+
+    // Hitung 5 hari kerja (Senin s/d Jumat) untuk minggu aktif
+    function getWeekDays(startDate: Date) {
+      const monday = getMondayOfWeek(startDate);
+      const days = [];
+      for (let i = 0; i < 5; i++) {
+        const next = new Date(monday);
+        next.setDate(monday.getDate() + i);
+        days.push(next);
+      }
+      return days;
+    }
+
+    async function loadSchedules() {
+      try {
+        const res = await fetch('/api/schedules');
+        allSchedules = await res.json();
+        renderWeekView();
+        renderMiniCalendar();
+        renderUpcoming();
+        updateCountBadge();
+      } catch (e) {
+        console.error('Gagal memuat jadwal:', e);
+      }
+    }
+
+    function updateCountBadge() {
+      const badge = document.getElementById('total-schedules-badge');
+      if (badge) badge.textContent = `${allSchedules.length} Agenda`;
+    }
+
+    function renderWeekView() {
+      const weekDays = getWeekDays(viewingDate);
+      const headerContainer = document.getElementById('timeline-day-headers');
+      const weekLabel = document.getElementById('week-date-range');
+
+      const firstDay = weekDays[0];
+      const lastDay = weekDays[4];
+
+      if (weekLabel) {
+        weekLabel.textContent = `${firstDay.getDate()} ${monthNames[firstDay.getMonth()]} - ${lastDay.getDate()} ${monthNames[lastDay.getMonth()]} ${lastDay.getFullYear()}`;
+      }
+
+      const today = new Date();
+      const todayStr = toDateString(today);
+
+      // Render Header Hari + Tanggal Nyata
+      if (headerContainer) {
+        headerContainer.innerHTML = weekDays.map((d, idx) => {
+          const dStr = toDateString(d);
+          const isToday = dStr === todayStr;
+          const dayName = daysList[idx];
+
+          return `
+            <div class="p-3 rounded-2xl ${isToday ? 'bg-blue-50/90 border-2 border-blue-600 shadow-xs' : 'bg-slate-50/80 border border-slate-200/70'} text-center transition-all">
+              <span class="text-[11px] font-semibold text-slate-500 block">${dayName}</span>
+              <div class="flex items-center justify-center gap-1.5 mt-0.5">
+                <span class="text-base font-black ${isToday ? 'text-blue-800' : 'text-slate-800'}">${d.getDate()}</span>
+                <span class="text-[11px] font-bold text-slate-400">${monthNames[d.getMonth()].slice(0, 3)}</span>
+              </div>
+              ${isToday ? '<span class="inline-block mt-1 px-2 py-0.5 rounded-full bg-blue-600 text-white font-black text-[9px] uppercase tracking-wider">Hari Ini</span>' : ''}
+            </div>
+          `;
+        }).join('');
+      }
+
+      // Render Kolom Agenda Ringkas & Bersih per Hari
+      const filtered = allSchedules.filter((s) => activeCategories.has(s.category));
+
+      weekDays.forEach((d, idx) => {
+        const dayName = daysList[idx];
+        const dayStr = toDateString(d);
+        const colContainer = document.getElementById(`day-items-${dayName.toLowerCase()}`);
+        const colWrapper = document.getElementById(`day-col-${dayName.toLowerCase()}`);
+        if (!colContainer) return;
+
+        // Cocokkan agenda: berdasarkan rentang tanggal (multi-hari) atau tanggal tunggal
+        const items = filtered.filter((s) => {
+          const sStart = s.startDate || s.date || '';
+          const sEnd = s.endDate || sStart;
+          if (sStart && sEnd) {
+            return dayStr >= sStart && dayStr <= sEnd;
+          }
+          if (s.date) return s.date === dayStr;
+          return s.day && s.day.toLowerCase() === dayName.toLowerCase();
+        });
+
+        items.sort((a, b) => (a.timeStart || '').localeCompare(b.timeStart || ''));
+
+        if (items.length === 0) {
+          colContainer.innerHTML = `
+            <div class="py-10 text-center text-slate-300 font-medium text-xs">
+              <span class="material-symbols-outlined text-base block mb-0.5 opacity-60">calendar_today</span>
+              <span>Kosong</span>
+            </div>
+          `;
+        } else {
+          colContainer.innerHTML = items.map((item) => {
+            // Styling ringkas per kategori
+            let borderAccent = 'border-l-4 border-l-teal-500 bg-teal-50/40 border-teal-200/80';
+            let dotColor = 'bg-teal-500';
+
+            if (item.category === 'rapat') {
+              borderAccent = 'border-l-4 border-l-rose-500 bg-rose-50/40 border-rose-200/80';
+              dotColor = 'bg-rose-500';
+            } else if (item.category === 'lsp') {
+              borderAccent = 'border-l-4 border-l-purple-500 bg-purple-50/40 border-purple-200/80';
+              dotColor = 'bg-purple-600';
+            } else if (item.category === 'khusus') {
+              borderAccent = 'border-l-4 border-l-amber-500 bg-amber-50/40 border-amber-200/80';
+              dotColor = 'bg-amber-500';
+            }
+
+            const isMultiDay = item.startDate && item.endDate && item.startDate !== item.endDate;
+            const isGuruVis = item.visibility === 'guru';
+
+            return `
+              <div
+                data-item='${JSON.stringify(item)}'
+                class="agenda-card-item cursor-pointer group relative p-3 rounded-2xl bg-white border ${borderAccent} hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 space-y-1.5"
+                title="Klik untuk melihat detail agenda"
+              >
+                <!-- Baris 1: Waktu & Ikon Penanda Ringkas -->
+                <div class="flex items-center justify-between gap-1 text-[10px] font-mono font-bold text-slate-600">
+                  <div class="flex items-center gap-1.5 truncate">
+                    <span class="w-2 h-2 rounded-full ${dotColor}"></span>
+                    <span>${item.timeStart} - ${item.timeEnd}</span>
+                  </div>
+                  <div class="flex items-center gap-1 shrink-0">
+                    ${isGuruVis ? '<span class="material-symbols-outlined text-xs text-amber-600" title="Khusus Guru">lock</span>' : ''}
+                    ${isMultiDay ? '<span class="text-[8px] font-bold text-purple-700 bg-purple-50 px-1 py-0.2 rounded border border-purple-200/60">Multi</span>' : ''}
+                    ${(!isGuruVis && item.notifyLeadDays > 0) ? `<span class="text-[8px] font-bold text-slate-600 bg-slate-100 px-1 py-0.2 rounded border border-slate-200/60" title="Tampil ke siswa H-${item.notifyLeadDays}">H-${item.notifyLeadDays}</span>` : ''}
+                  </div>
+                </div>
+
+                <!-- Baris 2: Judul Agenda Inti -->
+                <h5 class="text-xs font-bold text-slate-900 leading-snug line-clamp-2 group-hover:text-blue-600 transition-colors">
+                  ${item.title}
+                </h5>
+
+                <!-- Baris 3: Lokasi & Teks Bantuan Klik -->
+                <div class="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-100/80">
+                  <span class="truncate max-w-[85px] font-medium text-slate-500">${item.room || 'Ruang KBM'}</span>
+                  <span class="text-blue-600 font-bold group-hover:underline flex items-center gap-0.5 shrink-0">
+                    <span>Detail</span>
+                    <span class="material-symbols-outlined text-[11px]">arrow_forward</span>
+                  </span>
+                </div>
+              </div>
+            `;
+          }).join('');
+        }
+
+        // Tombol Tambah Ringkas di Bagian Bawah Kolom
+        if (colWrapper && !colWrapper.querySelector('.btn-quick-add-col')) {
+          const addBtn = document.createElement('button');
+          addBtn.type = 'button';
+          addBtn.className = 'btn-quick-add-col w-full py-2 rounded-xl border border-dashed border-slate-300 hover:border-blue-500 hover:bg-blue-50/60 text-slate-400 hover:text-blue-700 text-[11px] font-bold flex items-center justify-center gap-1 transition-all mt-2';
+          addBtn.innerHTML = '<span class="material-symbols-outlined text-xs">add</span><span>Tandai</span>';
+          addBtn.addEventListener('click', () => {
+            openAddModalWithDate(dayStr);
+          });
+          colWrapper.appendChild(addBtn);
+        }
+      });
+
+      // Wire click card agenda untuk membuka popup detail lengkap
+      document.querySelectorAll('.agenda-card-item').forEach((card) => {
+        card.addEventListener('click', (e) => {
+          if ((e.target as HTMLElement).closest('.btn-edit-agenda') || (e.target as HTMLElement).closest('.btn-delete-agenda')) return;
+          const item = JSON.parse((card as HTMLElement).dataset.item || '{}');
+          openDetailModal(item);
+        });
+      });
+
+      // Wire edit and delete
+      document.querySelectorAll('.btn-edit-agenda').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const item = JSON.parse((btn as HTMLElement).dataset.item || '{}');
+          openEditModal(item);
+        });
+      });
+
+      document.querySelectorAll('.btn-delete-agenda').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const id = (btn as HTMLElement).dataset.id;
+          const title = (btn as HTMLElement).dataset.title;
+          if (id && confirm(`Hapus rencana agenda "${title}"?`)) {
+            deleteScheduleItem(id);
+          }
+        });
+      });
+    }
+
+    // Mini Kalender dengan Dot Penanda Agenda & Klik Interaktif
+    function renderMiniCalendar() {
+      const grid = document.getElementById('mini-calendar-grid');
+      const title = document.getElementById('mini-calendar-title');
+      if (!grid) return;
+
+      if (title) title.textContent = `${monthNames[miniCalMonth]} ${miniCalYear}`;
+
+      const today = new Date();
+      const todayDate = today.getDate();
+      const isCurrentMonth = today.getFullYear() === miniCalYear && today.getMonth() === miniCalMonth;
+
+      const firstDay = new Date(miniCalYear, miniCalMonth, 1).getDay();
+      const daysInMonth = new Date(miniCalYear, miniCalMonth + 1, 0).getDate();
+
+      // Kumpulan tanggal yang memiliki agenda di bulan ini (termasuk rentang multi-hari)
+      const agendaDates = new Set();
+      allSchedules.forEach((s) => {
+        const sStart = s.startDate || s.date || '';
+        const sEnd = s.endDate || sStart;
+        if (sStart && sEnd) {
+          for (let d = 1; d <= daysInMonth; d++) {
+            const checkStr = `${miniCalYear}-${String(miniCalMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            if (checkStr >= sStart && checkStr <= sEnd) {
+              agendaDates.add(d);
+            }
+          }
+        } else if (s.date) {
+          const parts = s.date.split('-');
+          if (parts.length === 3 && parseInt(parts[0], 10) === miniCalYear && parseInt(parts[1], 10) === miniCalMonth + 1) {
+            agendaDates.add(parseInt(parts[2], 10));
+          }
+        }
+      });
+
+      let html = '';
+      for (let i = 0; i < firstDay; i++) {
+        html += `<span class="text-slate-300 py-1.5">-</span>`;
+      }
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const isToday = isCurrentMonth && d === todayDate;
+        const hasAgenda = agendaDates.has(d);
+        const dateObjStr = `${miniCalYear}-${String(miniCalMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const isSelected = toDateString(selectedDateForBox) === dateObjStr;
+
+        let activeClasses = 'text-slate-700 hover:bg-blue-50';
+        if (isToday) {
+          activeClasses = 'bg-blue-600 text-white font-black shadow-md shadow-blue-500/30';
+        } else if (isSelected) {
+          activeClasses = 'bg-blue-100 text-blue-800 font-bold ring-2 ring-blue-500';
+        }
+
+        html += `
+          <div
+            data-date="${dateObjStr}"
+            class="mini-cal-day relative flex flex-col items-center justify-center py-1 rounded-lg cursor-pointer transition-colors group"
+            title="Klik untuk melihat / tandai agenda tanggal ${d} ${monthNames[miniCalMonth]}"
+          >
+            <span class="w-6 h-6 flex items-center justify-center rounded-full text-xs font-semibold ${activeClasses}">
+              ${d}
+            </span>
+            ${hasAgenda ? '<span class="w-1 h-1 rounded-full bg-blue-600 mt-0.5"></span>' : '<span class="w-1 h-1 mt-0.5"></span>'}
+          </div>
+        `;
+      }
+
+      grid.innerHTML = html;
+
+      // Klik tanggal di mini kalender -> perbarui kotak info tanggal terpilih
+      grid.querySelectorAll('.mini-cal-day').forEach((el) => {
+        el.addEventListener('click', () => {
+          const dStr = (el as HTMLElement).dataset.date;
+          if (dStr) {
+            const parts = dStr.split('-');
+            selectedDateForBox = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+            renderMiniCalendar();
+            renderUpcoming();
+          }
+        });
+      });
+    }
+
+    function renderUpcoming() {
+      const badgeEl = document.getElementById('upcoming-badge');
+      const dateLabelEl = document.getElementById('upcoming-date-label');
+      const dotEl = document.getElementById('upcoming-pulse-dot');
+      const titleEl = document.getElementById('upcoming-title');
+      const timeRowEl = document.getElementById('upcoming-time-row');
+      const timeEl = document.getElementById('upcoming-time');
+      const infoEl = document.getElementById('upcoming-info');
+
+      const today = new Date();
+      const todayStr = toDateString(today);
+      const chosenStr = toDateString(selectedDateForBox);
+      const isToday = chosenStr === todayStr;
+
+      if (badgeEl) {
+        badgeEl.textContent = isToday ? 'Agenda Hari Ini' : 'Agenda Terpilih';
+      }
+      if (dateLabelEl) {
+        dateLabelEl.textContent = formatIndoDate(selectedDateForBox);
+      }
+
+      // Cocokkan agenda yang benar-benar terencana pada tanggal ini (termasuk multi-hari)
+      const matched = allSchedules.filter((s) => {
+        const sStart = s.startDate || s.date || '';
+        const sEnd = s.endDate || sStart;
+        if (sStart && sEnd) {
+          return chosenStr >= sStart && chosenStr <= sEnd;
+        }
+        return s.date === chosenStr;
+      });
+
+      if (matched.length === 0) {
+        // Tidak ada agenda pada tanggal ini
+        if (dotEl) {
+          dotEl.className = 'w-2 h-2 rounded-full bg-white/40';
+        }
+        if (titleEl) {
+          titleEl.textContent = isToday ? 'Tidak Ada Agenda Hari Ini' : 'Tidak Ada Agenda';
+        }
+        if (timeRowEl) {
+          timeRowEl.classList.add('hidden');
+        }
+        if (infoEl) {
+          infoEl.innerHTML = `
+            <div class="space-y-2">
+              <p class="text-[11px] text-blue-100/80 leading-snug">
+                Belum ada agenda kegiatan yang ditandai untuk tanggal ini.
+              </p>
+              <button
+                type="button"
+                id="btn-box-add-agenda"
+                class="w-full inline-flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl bg-white/20 hover:bg-white/30 text-white font-bold text-[11px] transition-all border border-white/20 shadow-xs cursor-pointer active:scale-95"
+              >
+                <span class="material-symbols-outlined text-xs">add_circle</span>
+                <span>Tandai Agenda Tanggal Ini</span>
+              </button>
+            </div>
+          `;
+          document.getElementById('btn-box-add-agenda')?.addEventListener('click', () => {
+            openAddModalWithDate(chosenStr);
+          });
+        }
+      } else {
+        // Ada agenda terencana pada tanggal ini
+        const first = matched[0];
+        if (dotEl) {
+          dotEl.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse';
+        }
+        if (titleEl) {
+          titleEl.textContent = first.title;
+        }
+        if (timeRowEl) {
+          timeRowEl.classList.remove('hidden');
+        }
+        if (timeEl) {
+          timeEl.textContent = `${first.timeStart} - ${first.timeEnd} WIB`;
+        }
+        if (infoEl) {
+          const extraCount = matched.length > 1 ? `<span class="block text-[10px] text-blue-200 mt-0.5 font-medium">(+${matched.length - 1} agenda lainnya di tanggal ini)</span>` : '';
+          const visLabel = first.visibility === 'guru' ? '🔒 Khusus Guru' : '🌐 Publik';
+          infoEl.innerHTML = `
+            <div class="flex items-center justify-between gap-1">
+              <span class="truncate">📍 ${first.room || 'SMK'} • ${first.classTarget || 'Semua'} • ${visLabel}</span>
+              <button
+                type="button"
+                id="btn-box-add-more"
+                class="text-blue-200 hover:text-white transition-colors shrink-0 p-1"
+                title="Tambah agenda lain di tanggal ini"
+              >
+                <span class="material-symbols-outlined text-sm">add</span>
+              </button>
+            </div>
+            ${extraCount}
+          `;
+          document.getElementById('btn-box-add-more')?.addEventListener('click', () => {
+            openAddModalWithDate(chosenStr);
+          });
+        }
+      }
+    }
+
+    // Stepper UI Management (Gaya Desain Konsisten dengan Pendaftaran Civitas)
+    function updateStepUI(targetStep: number) {
+      currentStep = targetStep;
+
+      // Toggle Panels
+      const p1 = document.getElementById('agenda-step-panel-1');
+      const p2 = document.getElementById('agenda-step-panel-2');
+      const p3 = document.getElementById('agenda-step-panel-3');
+      const p4 = document.getElementById('agenda-step-panel-4');
+      p1?.classList.toggle('hidden', currentStep !== 1);
+      p2?.classList.toggle('hidden', currentStep !== 2);
+      p3?.classList.toggle('hidden', currentStep !== 3);
+      p4?.classList.toggle('hidden', currentStep !== 4);
+
+      // Update Stepper Progress Line
+      const stepperLine = document.getElementById('agenda-stepper-progress-line');
+      if (stepperLine) {
+        stepperLine.style.width = currentStep === 1 ? '0%' : currentStep === 2 ? '33.3%' : currentStep === 3 ? '66.6%' : '100%';
+      }
+
+      // Update Stepper Indicators (1 - 2 - 3 - 4)
+      for (let s = 1; s <= 4; s++) {
+        const badge = document.getElementById(`agenda-step-badge-${s}`);
+        const label = document.getElementById(`agenda-step-label-${s}`);
+        if (!badge || !label) continue;
+
+        if (s < currentStep) {
+          badge.className = 'w-7 h-7 rounded-full bg-emerald-500 text-white font-black text-xs flex items-center justify-center shadow-md shadow-emerald-500/20 transition-all';
+          badge.innerHTML = '<span class="material-symbols-outlined text-sm font-bold">check</span>';
+          label.className = 'text-[10px] font-bold text-emerald-700 whitespace-nowrap';
+        } else if (s === currentStep) {
+          badge.className = 'w-7 h-7 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-black text-xs flex items-center justify-center shadow-md shadow-blue-500/30 ring-4 ring-blue-100 transition-all';
+          badge.textContent = String(s);
+          label.className = 'text-[10px] font-bold text-blue-700 whitespace-nowrap';
+        } else {
+          badge.className = 'w-7 h-7 rounded-full bg-slate-100 text-slate-400 font-bold text-xs flex items-center justify-center transition-all';
+          badge.textContent = String(s);
+          label.className = 'text-[10px] font-semibold text-slate-400 whitespace-nowrap';
+        }
+      }
+
+      // Update Action Buttons
+      if (currentStep === 1) {
+        btnAgendaPrev?.classList.add('hidden');
+        btnAgendaNext?.classList.remove('hidden');
+        if (btnAgendaNext) btnAgendaNext.textContent = 'Lanjut ke Privasi →';
+        btnSubmitAgendaFinal?.classList.add('hidden');
+      } else if (currentStep === 2) {
+        btnAgendaPrev?.classList.remove('hidden');
+        if (btnAgendaPrev) btnAgendaPrev.textContent = '← Kategori';
+        btnAgendaNext?.classList.remove('hidden');
+        if (btnAgendaNext) btnAgendaNext.textContent = 'Lanjut ke Waktu →';
+        btnSubmitAgendaFinal?.classList.add('hidden');
+      } else if (currentStep === 3) {
+        btnAgendaPrev?.classList.remove('hidden');
+        if (btnAgendaPrev) btnAgendaPrev.textContent = '← Privasi';
+        btnAgendaNext?.classList.remove('hidden');
+        if (btnAgendaNext) btnAgendaNext.textContent = 'Lanjut ke Detail →';
+        btnSubmitAgendaFinal?.classList.add('hidden');
+      } else if (currentStep === 4) {
+        btnAgendaPrev?.classList.remove('hidden');
+        if (btnAgendaPrev) btnAgendaPrev.textContent = '← Waktu';
+        btnAgendaNext?.classList.add('hidden');
+        btnSubmitAgendaFinal?.classList.remove('hidden');
+
+        // Populate Ringkasan Data
+        const sumName = document.getElementById('summary-agenda-name');
+        const sumVis = document.getElementById('summary-agenda-vis');
+        const sumLead = document.getElementById('summary-agenda-lead');
+        const sumDate = document.getElementById('summary-agenda-date');
+        const sumTime = document.getElementById('summary-agenda-time');
+
+        if (sumName) sumName.textContent = titleInput?.value.trim() || '-';
+        if (sumVis) {
+          const cat = categoryInput?.value || 'kbm';
+          const catNames: Record<string, string> = { kbm: 'KBM Reguler', rapat: 'Rapat & Staf', lsp: 'UKK / LSP', khusus: 'Agenda Khusus' };
+          const visName = visibilityInput?.value === 'guru' ? 'Khusus Guru' : 'Publik';
+          sumVis.textContent = `${catNames[cat] || 'KBM'} • ${visName}`;
+        }
+        if (sumLead) {
+          const isGuru = visibilityInput?.value === 'guru';
+          if (isGuru) {
+            sumLead.textContent = 'Khusus Guru (Tidak tampil)';
+          } else {
+            const ld = parseInt(leadDaysInput?.value || '0', 10);
+            sumLead.textContent = ld === 0 ? 'Langsung Tampil' : `H-${ld} Sebelum Mulai`;
+          }
+        }
+        if (sumDate) {
+          if (durationModeInput?.value === 'range' && startDateInput?.value && endDateInput?.value) {
+            sumDate.textContent = `${startDateInput.value} s/d ${endDateInput.value}`;
+          } else {
+            sumDate.textContent = dateInput?.value || '-';
+          }
+        }
+        if (sumTime) {
+          sumTime.textContent = `${timeStartInput?.value || '08:00'} - ${timeEndInput?.value || '09:30'} WIB`;
+        }
+      }
+    }
+
+    function validateStep(step: number): boolean {
+      if (formError) formError.classList.add('hidden');
+      if (step === 1) {
+        if (!titleInput?.value.trim()) {
+          if (formError) {
+            formError.textContent = 'Nama agenda wajib diisi terlebih dahulu.';
+            formError.classList.remove('hidden');
+          }
+          titleInput?.focus();
+          return false;
+        }
+      } else if (step === 3) {
+        const isRange = durationModeInput?.value === 'range';
+        if (isRange) {
+          if (!startDateInput?.value || !endDateInput?.value) {
+            if (formError) {
+              formError.textContent = 'Tanggal mulai dan selesai wajib dipilih.';
+              formError.classList.remove('hidden');
+            }
+            return false;
+          }
+          if (startDateInput.value > endDateInput.value) {
+            if (formError) {
+              formError.textContent = 'Tanggal mulai tidak boleh melebihi tanggal selesai.';
+              formError.classList.remove('hidden');
+            }
+            return false;
+          }
+        } else {
+          if (!dateInput?.value) {
+            if (formError) {
+              formError.textContent = 'Tanggal pelaksanaan agenda wajib diisi.';
+              formError.classList.remove('hidden');
+            }
+            return false;
+          }
+        }
+      }
+      return true;
+    }
+
+    function setCategory(cat: string) {
+      if (categoryInput) categoryInput.value = cat;
+      const cats = ['kbm', 'rapat', 'lsp', 'khusus'];
+      cats.forEach((c) => {
+        const card = document.getElementById(`cat-card-${c}`);
+        const radio = document.getElementById(`cat-radio-${c}`);
+        if (c === cat) {
+          card?.classList.remove('border', 'border-slate-200', 'bg-white');
+          card?.classList.add('border-2', 'border-blue-600', 'bg-blue-50/60', 'shadow-sm');
+          radio?.classList.remove('border-slate-300', 'bg-white', 'text-transparent');
+          radio?.classList.add('border-blue-600', 'bg-blue-600', 'text-white');
+        } else {
+          card?.classList.remove('border-2', 'border-blue-600', 'bg-blue-50/60', 'shadow-sm');
+          card?.classList.add('border', 'border-slate-200', 'bg-white');
+          radio?.classList.remove('border-blue-600', 'bg-blue-600', 'text-white');
+          radio?.classList.add('border-slate-300', 'bg-white', 'text-transparent');
+        }
+      });
+    }
+
+    function setVisibility(v: string) {
+      if (visibilityInput) visibilityInput.value = v;
+      const cardPub = document.getElementById('agenda-vis-card-public');
+      const cardGuru = document.getElementById('agenda-vis-card-guru');
+      const radPub = document.getElementById('agenda-radio-public');
+      const radGuru = document.getElementById('agenda-radio-guru');
+      const boxLead = document.getElementById('box-lead-days');
+
+      if (v === 'public') {
+        boxLead?.classList.remove('hidden');
+        cardPub?.classList.remove('border', 'border-slate-200', 'bg-white');
+        cardPub?.classList.add('border-2', 'border-blue-600', 'bg-blue-50/60', 'shadow-sm');
+        radPub?.classList.remove('border-slate-300', 'bg-white', 'text-transparent');
+        radPub?.classList.add('border-blue-600', 'bg-blue-600', 'text-white');
+
+        cardGuru?.classList.remove('border-2', 'border-amber-600', 'bg-amber-50/60', 'shadow-sm');
+        cardGuru?.classList.add('border', 'border-slate-200', 'bg-white');
+        radGuru?.classList.remove('border-amber-600', 'bg-amber-600', 'text-white');
+        radGuru?.classList.add('border-slate-300', 'bg-white', 'text-transparent');
+      } else {
+        boxLead?.classList.add('hidden');
+        cardGuru?.classList.remove('border', 'border-slate-200', 'bg-white');
+        cardGuru?.classList.add('border-2', 'border-amber-600', 'bg-amber-50/60', 'shadow-sm');
+        radGuru?.classList.remove('border-slate-300', 'bg-white', 'text-transparent');
+        radGuru?.classList.add('border-amber-600', 'bg-amber-600', 'text-white');
+
+        cardPub?.classList.remove('border-2', 'border-blue-600', 'bg-blue-50/60', 'shadow-sm');
+        cardPub?.classList.add('border', 'border-slate-200', 'bg-white');
+        radPub?.classList.remove('border-blue-600', 'bg-blue-600', 'text-white');
+        radPub?.classList.add('border-slate-300', 'bg-white', 'text-transparent');
+      }
+    }
+
+    function setLeadDays(days: number) {
+      if (leadDaysInput) leadDaysInput.value = String(days);
+      document.querySelectorAll('.btn-lead-day').forEach((btn) => {
+        const d = parseInt((btn as HTMLElement).dataset.days || '0', 10);
+        if (d === days) {
+          btn.className = 'btn-lead-day py-2 px-2.5 rounded-xl border-2 border-blue-600 bg-blue-50/70 text-blue-800 text-[11px] font-bold text-center transition-all shadow-2xs flex flex-col items-center gap-0.5';
+        } else {
+          btn.className = 'btn-lead-day py-2 px-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 hover:border-slate-300 text-[11px] font-bold text-center transition-all flex flex-col items-center gap-0.5';
+        }
+      });
+    }
+
+    function setDurationMode(mode: string) {
+      if (durationModeInput) durationModeInput.value = mode;
+      const cardSingle = document.getElementById('mode-card-single');
+      const cardRange = document.getElementById('mode-card-range');
+      const radSingle = document.getElementById('mode-radio-single');
+      const radRange = document.getElementById('mode-radio-range');
+      const boxSingle = document.getElementById('box-single-date');
+      const boxRange = document.getElementById('box-range-date');
+
+      if (mode === 'single') {
+        cardSingle?.classList.remove('border', 'border-slate-200', 'bg-white');
+        cardSingle?.classList.add('border-2', 'border-blue-600', 'bg-blue-50/60', 'shadow-sm');
+        radSingle?.classList.remove('border-slate-300', 'bg-white', 'text-transparent');
+        radSingle?.classList.add('border-blue-600', 'bg-blue-600', 'text-white');
+
+        cardRange?.classList.remove('border-2', 'border-purple-600', 'bg-purple-50/60', 'shadow-sm');
+        cardRange?.classList.add('border', 'border-slate-200', 'bg-white');
+        radRange?.classList.remove('border-purple-600', 'bg-purple-600', 'text-white');
+        radRange?.classList.add('border-slate-300', 'bg-white', 'text-transparent');
+
+        boxSingle?.classList.remove('hidden');
+        boxRange?.classList.add('hidden');
+      } else {
+        cardRange?.classList.remove('border', 'border-slate-200', 'bg-white');
+        cardRange?.classList.add('border-2', 'border-purple-600', 'bg-purple-50/60', 'shadow-sm');
+        radRange?.classList.remove('border-slate-300', 'bg-white', 'text-transparent');
+        radRange?.classList.add('border-purple-600', 'bg-purple-600', 'text-white');
+
+        cardSingle?.classList.remove('border-2', 'border-blue-600', 'bg-blue-50/60', 'shadow-sm');
+        cardSingle?.classList.add('border', 'border-slate-200', 'bg-white');
+        radSingle?.classList.remove('border-blue-600', 'bg-blue-600', 'text-white');
+        radSingle?.classList.add('border-slate-300', 'bg-white', 'text-transparent');
+
+        boxSingle?.classList.add('hidden');
+        boxRange?.classList.remove('hidden');
+      }
+    }
+
+    // Step Nav Buttons & Indicators
+    btnAgendaNext?.addEventListener('click', () => {
+      if (validateStep(currentStep)) {
+        updateStepUI(currentStep + 1);
+      }
+    });
+
+    btnAgendaPrev?.addEventListener('click', () => {
+      if (currentStep > 1) {
+        if (formError) formError.classList.add('hidden');
+        updateStepUI(currentStep - 1);
+      }
+    });
+
+    document.querySelectorAll('.agenda-step-indicator').forEach((ind) => {
+      ind.addEventListener('click', () => {
+        const target = parseInt((ind as HTMLElement).dataset.step || '1', 10);
+        if (target === currentStep) return;
+        if (target > currentStep) {
+          for (let s = currentStep; s < target; s++) {
+            if (!validateStep(s)) return;
+          }
+        }
+        if (formError) formError.classList.add('hidden');
+        updateStepUI(target);
+      });
+    });
+
+    // Wire Card Click Selections
+    ['kbm', 'rapat', 'lsp', 'khusus'].forEach((cat) => {
+      document.getElementById(`cat-card-${cat}`)?.addEventListener('click', () => setCategory(cat));
+    });
+
+    document.getElementById('agenda-vis-card-public')?.addEventListener('click', () => setVisibility('public'));
+    document.getElementById('agenda-vis-card-guru')?.addEventListener('click', () => setVisibility('guru'));
+
+    document.getElementById('mode-card-single')?.addEventListener('click', () => setDurationMode('single'));
+    document.getElementById('mode-card-range')?.addEventListener('click', () => setDurationMode('range'));
+
+    document.querySelectorAll('.btn-lead-day').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const d = parseInt((btn as HTMLElement).dataset.days || '0', 10);
+        setLeadDays(d);
+      });
+    });
+
+    // Modal Detail Control
+    function openDetailModal(item: any) {
+      selectedDetailItem = item;
+      const catBadge = document.getElementById('detail-category-badge');
+      const visBadge = document.getElementById('detail-vis-badge');
+      const rangeBadge = document.getElementById('detail-range-badge');
+      const title = document.getElementById('detail-agenda-title');
+      const date = document.getElementById('detail-agenda-date');
+      const time = document.getElementById('detail-agenda-time');
+      const room = document.getElementById('detail-agenda-room');
+      const cls = document.getElementById('detail-agenda-class');
+      const inst = document.getElementById('detail-agenda-instructor');
+
+      if (catBadge) {
+        const catMap: Record<string, { label: string; cls: string }> = {
+          kbm: { label: 'KBM Reguler', cls: 'bg-teal-50 text-teal-800 border-teal-200/60' },
+          rapat: { label: 'Rapat & Staf', cls: 'bg-rose-50 text-rose-800 border-rose-200/60' },
+          lsp: { label: 'UKK / LSP', cls: 'bg-purple-50 text-purple-800 border-purple-200/60' },
+          khusus: { label: 'Agenda Khusus', cls: 'bg-amber-50 text-amber-800 border-amber-200/60' },
+        };
+        const c = catMap[item.category] || catMap.kbm;
+        catBadge.textContent = c.label;
+        catBadge.className = `px-2.5 py-1 rounded-xl text-xs font-bold border ${c.cls}`;
+      }
+
+      if (visBadge) {
+        const isGuru = item.visibility === 'guru';
+        visBadge.textContent = isGuru ? 'Khusus Guru' : 'Publik';
+        visBadge.className = isGuru
+          ? 'px-2.5 py-1 rounded-xl text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200/60'
+          : 'px-2.5 py-1 rounded-xl text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200/60';
+      }
+
+      if (rangeBadge) {
+        const isMultiDay = item.startDate && item.endDate && item.startDate !== item.endDate;
+        if (isMultiDay) {
+          rangeBadge.classList.remove('hidden');
+        } else {
+          rangeBadge.classList.add('hidden');
+        }
+      }
+
+      if (title) title.textContent = item.title || '-';
+      if (date) {
+        if (item.startDate && item.endDate && item.startDate !== item.endDate) {
+          date.textContent = `${item.startDate} s/d ${item.endDate}`;
+        } else {
+          date.textContent = item.date || item.startDate || '-';
+        }
+      }
+      if (time) time.textContent = `${item.timeStart || '08:00'} - ${item.timeEnd || '09:30'} WIB`;
+      if (room) room.textContent = item.room || 'Ruang KBM';
+      if (cls) cls.textContent = item.classTarget || 'Semua Kelas';
+      if (inst) inst.textContent = item.instructor || 'Guru Pengampu';
+
+      const leadEl = document.getElementById('detail-agenda-lead');
+      const leadRow = document.getElementById('detail-lead-row');
+      if (leadEl && leadRow) {
+        if (item.visibility === 'guru') {
+          leadRow.classList.add('hidden');
+        } else {
+          leadRow.classList.remove('hidden');
+          const ld = Number(item.notifyLeadDays ?? 0);
+          leadEl.textContent = ld === 0 ? 'Langsung Tampil' : `Mulai H-${ld} Pelaksanaan`;
+        }
+      }
+
+      if (detailModal) {
+        detailModal.classList.remove('hidden');
+        detailModal.classList.add('flex');
+      }
+    }
+
+    function closeDetailModal() {
+      if (detailModal) {
+        detailModal.classList.add('hidden');
+        detailModal.classList.remove('flex');
+      }
+    }
+
+    document.getElementById('btn-close-detail-modal')?.addEventListener('click', closeDetailModal);
+    document.getElementById('btn-detail-close-action')?.addEventListener('click', closeDetailModal);
+
+    document.getElementById('btn-detail-edit')?.addEventListener('click', () => {
+      if (selectedDetailItem) {
+        closeDetailModal();
+        openEditModal(selectedDetailItem);
+      }
+    });
+
+    document.getElementById('btn-detail-delete')?.addEventListener('click', () => {
+      if (selectedDetailItem && confirm(`Hapus rencana agenda "${selectedDetailItem.title}"?`)) {
+        closeDetailModal();
+        deleteScheduleItem(selectedDetailItem.id);
+      }
+    });
+
+    // Modal Agenda Control
+    function openAddModalWithDate(specificDate?: string) {
+      if (modalTitle) modalTitle.textContent = 'Perencanaan Agenda Baru';
+      if (agendaForm) agendaForm.reset();
+      if (idInput) idInput.value = '';
+
+      const targetDate = specificDate || toDateString(selectedDateForBox);
+      if (dateInput) dateInput.value = targetDate;
+      if (startDateInput) startDateInput.value = targetDate;
+      if (endDateInput) endDateInput.value = targetDate;
+
+      setCategory('kbm');
+      setVisibility('public');
+      setLeadDays(0);
+      setDurationMode('single');
+      updateStepUI(1);
+
+      if (formError) { formError.classList.add('hidden'); formError.textContent = ''; }
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+    }
+
+    function openEditModal(item: any) {
+      if (modalTitle) modalTitle.textContent = 'Edit Rencana Agenda';
+      if (idInput) idInput.value = item.id || '';
+      if (titleInput) titleInput.value = item.title || '';
+      if (timeStartInput) timeStartInput.value = item.timeStart || '08:00';
+      if (timeEndInput) timeEndInput.value = item.timeEnd || '09:30';
+      if (roomInput) roomInput.value = item.room || '';
+      if (classInput) classInput.value = item.classTarget || '';
+      if (instInput) instInput.value = item.instructor || '';
+
+      setCategory(item.category || 'kbm');
+      setVisibility(item.visibility === 'guru' ? 'guru' : 'public');
+      setLeadDays(Number(item.notifyLeadDays ?? 0));
+
+      if (item.startDate && item.endDate && item.startDate !== item.endDate) {
+        setDurationMode('range');
+        if (startDateInput) startDateInput.value = item.startDate;
+        if (endDateInput) endDateInput.value = item.endDate;
+        if (dateInput) dateInput.value = item.startDate;
+      } else {
+        setDurationMode('single');
+        const fallbackDate = item.date || item.startDate || toDateString(viewingDate);
+        if (dateInput) dateInput.value = fallbackDate;
+        if (startDateInput) startDateInput.value = fallbackDate;
+        if (endDateInput) endDateInput.value = fallbackDate;
+      }
+
+      updateStepUI(1);
+
+      if (formError) { formError.classList.add('hidden'); formError.textContent = ''; }
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+    }
+
+    function closeModal() {
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    btnOpenModal?.addEventListener('click', () => openAddModalWithDate());
+    btnCloseModal?.addEventListener('click', closeModal);
+
+    // Save Form
+    agendaForm?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!validateStep(1) || !validateStep(3)) {
+        return;
+      }
+      if (formError) formError.classList.add('hidden');
+
+      const isRange = durationModeInput?.value === 'range';
+      const startDateStr = isRange
+        ? (startDateInput?.value || toDateString(viewingDate))
+        : (dateInput?.value || toDateString(viewingDate));
+      const endDateStr = isRange ? (endDateInput?.value || startDateStr) : startDateStr;
+      const dateParts = startDateStr.split('-');
+      const chosenDate = dateParts.length === 3
+        ? new Date(parseInt(dateParts[0], 10), parseInt(dateParts[1], 10) - 1, parseInt(dateParts[2], 10))
+        : new Date(startDateStr + 'T00:00:00');
+      const dayName = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][chosenDate.getDay()] || 'Senin';
+
+      const payload = {
+        id: idInput?.value || undefined,
+        title: titleInput?.value?.trim() || '',
+        category: categoryInput?.value || 'kbm',
+        day: dayName,
+        date: startDateStr,
+        startDate: startDateStr,
+        endDate: endDateStr,
+        visibility: visibilityInput?.value === 'guru' ? 'guru' : 'public',
+        notifyLeadDays: Number(leadDaysInput?.value || 0),
+        timeStart: timeStartInput?.value || '08:00',
+        timeEnd: timeEndInput?.value || '09:30',
+        room: roomInput?.value?.trim() || 'Ruang KBM',
+        classTarget: classInput?.value?.trim() || 'Semua Kelas',
+        instructor: instInput?.value?.trim() || 'Guru Pengampu',
+      };
+
+      try {
+        const res = await fetch('/api/schedules', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const result = await res.json();
+        if (!res.ok) {
+          if (formError) {
+            formError.textContent = result.message || 'Gagal menyimpan agenda';
+            formError.classList.remove('hidden');
+          }
+          return;
+        }
+        closeModal();
+        const parts = startDateStr.split('-');
+        if (parts.length === 3) {
+          selectedDateForBox = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+          viewingDate = new Date(selectedDateForBox);
+          miniCalYear = selectedDateForBox.getFullYear();
+          miniCalMonth = selectedDateForBox.getMonth();
+        }
+        await loadSchedules();
+      } catch (err: any) {
+        if (formError) {
+          formError.textContent = err.message || 'Terjadi kesalahan sistem';
+          formError.classList.remove('hidden');
+        }
+      }
+    });
+
+    async function deleteScheduleItem(id: string) {
+      try {
+        const res = await fetch(`/api/schedules?id=${id}`, {
+          method: 'DELETE',
+        });
+        if (res.ok) {
+          await loadSchedules();
+        }
+      } catch (e) {
+        console.error('Gagal menghapus agenda:', e);
+      }
+    }
+
+    // Week navigation controls
+    document.getElementById('btn-prev-week')?.addEventListener('click', () => {
+      viewingDate.setDate(viewingDate.getDate() - 7);
+      renderWeekView();
+    });
+
+    document.getElementById('btn-next-week')?.addEventListener('click', () => {
+      viewingDate.setDate(viewingDate.getDate() + 7);
+      renderWeekView();
+    });
+
+    document.getElementById('btn-today-week')?.addEventListener('click', () => {
+      viewingDate = new Date();
+      selectedDateForBox = new Date();
+      miniCalYear = viewingDate.getFullYear();
+      miniCalMonth = viewingDate.getMonth();
+      renderWeekView();
+      renderMiniCalendar();
+      renderUpcoming();
+    });
+
+    // Month navigation controls
+    document.getElementById('btn-prev-month')?.addEventListener('click', () => {
+      miniCalMonth--;
+      if (miniCalMonth < 0) {
+        miniCalMonth = 11;
+        miniCalYear--;
+      }
+      renderMiniCalendar();
+    });
+
+    document.getElementById('btn-next-month')?.addEventListener('click', () => {
+      miniCalMonth++;
+      if (miniCalMonth > 11) {
+        miniCalMonth = 0;
+        miniCalYear++;
+      }
+      renderMiniCalendar();
+    });
+
+    // Checkbox category filters
+    document.querySelectorAll('.cat-filter').forEach((cb) => {
+      cb.addEventListener('change', (e) => {
+        const target = e.target as HTMLInputElement;
+        if (target.checked) {
+          activeCategories.add(target.value);
+        } else {
+          activeCategories.delete(target.value);
+        }
+        renderWeekView();
+      });
+    });
+
+    // Realtime Listener
+    window.addEventListener('attendance-updated', loadSchedules);
+
+    // Dynamic Autocomplete Guru Pengampu dari Data Terdaftar
+    fetch('/api/students')
+      .then((r) => r.json())
+      .then((civitasList) => {
+        const instDatalist = document.getElementById('datalist-instructors');
+        if (!instDatalist || !Array.isArray(civitasList)) return;
+        const teachers = civitasList.filter((c: any) => c.role === 'guru' || c.role === 'admin');
+        const teacherOptions = teachers.map((t: any) => `<option value="${t.name}">`).join('');
+        instDatalist.innerHTML = teacherOptions + instDatalist.innerHTML;
+      })
+      .catch(() => {});
+
+    // Initial Load
+    loadSchedules();
+  </script>
+</Layout>

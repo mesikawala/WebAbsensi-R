@@ -1,0 +1,1032 @@
+---
+/**
+ * @file src/pages/login.astro
+ * @description Portal Login Mandiri Civitas (Siswa & Guru) Berbasis Data Unik Kartu (RFID UID & Nama Lengkap)
+ * Pemfilteran peran (Siswa vs Guru) sepenuhnya ditangani oleh backend berdasarkan tag 'role' di database Turso.
+ */
+import '../styles/global.css';
+---
+
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login Portal Civitas | SMK Ma'arif 1 Padang Ratu</title>
+    <meta name="description" content="Portal login mandiri siswa dan dewan guru berbasis Nama Lengkap dan ID Kartu RFID SMK Ma'arif 1 Padang Ratu." />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+      rel="stylesheet"
+    />
+    <style is:global>
+      body {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+      }
+      .font-mono {
+        font-family: 'JetBrains Mono', monospace;
+      }
+      @media (min-width: 1024px) {
+        .curved-card-left {
+          border-top-left-radius: 65px !important;
+          border-bottom-left-radius: 65px !important;
+        }
+      }
+      #reg-birth-input::-webkit-calendar-picker-indicator {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        opacity: 0;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body class="bg-gradient-to-br from-[#0a38b8] via-[#1d4ed8] to-[#0284c7] min-h-screen flex items-center justify-center p-3 sm:p-6 lg:p-8 select-none text-slate-800">
+    
+    <!-- Outer Card Container -->
+    <div class="w-full max-w-3xl bg-gradient-to-r from-[#0f44cc] to-[#1e58e8] rounded-3xl shadow-2xl overflow-hidden flex flex-col lg:flex-row relative border border-white/20">
+      
+      <!-- ====================================================
+           LEFT SIDEBAR (WELCOME PANEL)
+           ==================================================== -->
+      <div class="lg:w-[38%] p-7 sm:p-9 flex flex-col justify-between items-center text-center text-white relative overflow-hidden">
+        <!-- Background subtle glow -->
+        <div class="absolute -top-16 -left-16 w-48 h-48 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
+        <div class="absolute -bottom-20 -right-20 w-56 h-56 bg-sky-400/20 rounded-full blur-3xl pointer-events-none"></div>
+
+        <!-- Top Section: School Icon & Welcome Text -->
+        <div class="relative z-10 flex flex-col items-center my-auto py-4">
+          <div class="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-md mb-4 group hover:scale-105 transition duration-300">
+            <span class="material-symbols-outlined text-3xl text-white">school</span>
+          </div>
+
+          <h1 class="text-2xl font-black tracking-tight text-white mb-1.5">Portal Civitas</h1>
+          <p class="text-xs text-blue-100/80 leading-relaxed max-w-[220px]">
+            Presensi digital dan portal akademik SMK Ma'arif 1 Padang Ratu.
+          </p>
+        </div>
+
+        <!-- Bottom Pill Buttons: Dev Bypass -->
+        <div class="relative z-10 w-full pt-4">
+          <button
+            id="btn-dev-bypass"
+            type="button"
+            class="inline-flex items-center justify-center gap-1.5 w-full py-2.5 px-4 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs border border-white/20 transition-all duration-200 active:scale-95 cursor-pointer backdrop-blur-sm"
+            title="Akses Administrator"
+          >
+            <span class="material-symbols-outlined text-sm">admin_panel_settings</span>
+            <span>Akses Admin</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ====================================================
+           RIGHT PANEL (FORM 2 FIELD: NAMA LENGKAP & ID KARTU RFID)
+           ==================================================== -->
+      <div class="flex-1 bg-white curved-card-left p-6 sm:p-9 flex flex-col justify-between shadow-xl relative">
+        
+        <!-- Center Form Title -->
+        <div class="mb-5">
+          <h2 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+            Masuk Portal
+          </h2>
+          <p class="text-xs text-slate-500 mt-1">Presensi & profil civitas akademik</p>
+        </div>
+
+        <!-- Login Form: HANYA 2 INPUT FIELD -->
+        <form id="civitas-login-form" novalidate class="space-y-3.5">
+          
+          <!-- Field 1: Username / Nama Lengkap -->
+          <div class="relative flex items-center">
+            <span class="material-symbols-outlined text-slate-400 text-lg absolute left-3.5 pointer-events-none">person</span>
+            <input
+              type="text"
+              id="input-name"
+              name="name"
+              placeholder="Nama Lengkap / Username"
+              class="w-full text-xs font-semibold pl-10 pr-4 py-3 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition text-slate-800 placeholder:text-slate-400"
+              autocomplete="name"
+            />
+          </div>
+
+          <!-- Field 2: ID Kartu RFID -->
+          <div class="relative flex items-center">
+            <span class="material-symbols-outlined text-slate-400 text-lg absolute left-3.5 pointer-events-none">contactless</span>
+            <input
+              type="text"
+              id="input-rfid"
+              name="rfidUid"
+              placeholder="ID Kartu RFID"
+              class="w-full text-xs font-mono font-bold uppercase tracking-wider pl-10 pr-4 py-3 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition text-slate-800 placeholder:text-slate-400"
+              autocomplete="off"
+              autocapitalize="characters"
+            />
+          </div>
+
+          <!-- Alert / Status Error Message -->
+          <div id="login-alert-box" class="hidden p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center gap-2">
+            <span class="material-symbols-outlined text-rose-600 text-sm shrink-0">error</span>
+            <span id="login-alert-msg">Terjadi kesalahan verifikasi identitas.</span>
+          </div>
+
+          <!-- Bottom Action Section: Big Submit Button -->
+          <div class="pt-2">
+            <button
+              id="btn-submit-login"
+              type="submit"
+              class="w-full py-3 px-6 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-600/20 transition-all duration-200 active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <span id="btn-submit-text">Masuk</span>
+              <span class="material-symbols-outlined text-sm">arrow_forward</span>
+            </button>
+          </div>
+        </form>
+
+        <!-- Divider & Tombol Daftar Siswa Mandiri -->
+        <div class="pt-4 border-t border-slate-100 flex items-center justify-between gap-3 text-xs mt-3">
+          <span class="text-[11px] text-slate-400">Belum terdaftar?</span>
+          <button
+            type="button"
+            id="btn-open-register-modal"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-blue-600 hover:text-blue-700 hover:bg-blue-50 font-bold text-[11px] transition-colors cursor-pointer"
+          >
+            <span>Daftar Mandiri</span>
+            <span class="material-symbols-outlined text-xs">arrow_forward</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Modal Dialog: Pendaftaran Siswa Mandiri -->
+    <div id="register-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md hidden items-center justify-center p-3 sm:p-4 overflow-y-auto">
+      <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-4 relative overflow-hidden animate-in fade-in zoom-in-95 duration-200 my-6">
+        <!-- Header Modal -->
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+              <span class="material-symbols-outlined text-xl">school</span>
+            </div>
+            <div>
+              <h2 class="text-base font-bold text-slate-900 tracking-tight">Pendaftaran Siswa</h2>
+              <p class="text-[11px] text-slate-400">SMK Ma'arif 1 Padang Ratu</p>
+            </div>
+          </div>
+          <button id="btn-close-register-modal" type="button" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition cursor-pointer">
+            <span class="material-symbols-outlined text-sm">close</span>
+          </button>
+        </div>
+
+        <!-- Stepper Progress Bar -->
+        <div class="px-2">
+          <div class="flex items-center justify-between relative">
+            <div class="absolute top-3.5 left-6 right-6 h-0.5 bg-slate-200 -z-10">
+              <div id="reg-stepper-progress-line" class="h-full bg-blue-600 transition-all duration-300" style="width: 0%"></div>
+            </div>
+
+            <!-- Step 1: Jurusan -->
+            <div class="reg-step-indicator flex flex-col items-center gap-1 cursor-pointer" data-step="1">
+              <div id="reg-step-badge-1" class="w-7 h-7 rounded-full bg-blue-600 text-white font-bold text-xs flex items-center justify-center shadow-md shadow-blue-500/20 transition-all">
+                1
+              </div>
+              <span id="reg-step-label-1" class="text-[10px] font-bold text-blue-700 whitespace-nowrap">Jurusan</span>
+            </div>
+
+            <!-- Step 2: Data Pokok -->
+            <div class="reg-step-indicator flex flex-col items-center gap-1 cursor-pointer" data-step="2">
+              <div id="reg-step-badge-2" class="w-7 h-7 rounded-full bg-slate-100 text-slate-400 font-bold text-xs flex items-center justify-center transition-all">
+                2
+              </div>
+              <span id="reg-step-label-2" class="text-[10px] font-semibold text-slate-400 whitespace-nowrap">Identitas</span>
+            </div>
+
+            <!-- Step 3: Kelas & Rombel -->
+            <div class="reg-step-indicator flex flex-col items-center gap-1 cursor-pointer" data-step="3">
+              <div id="reg-step-badge-3" class="w-7 h-7 rounded-full bg-slate-100 text-slate-400 font-bold text-xs flex items-center justify-center transition-all">
+                3
+              </div>
+              <span id="reg-step-label-3" class="text-[10px] font-semibold text-slate-400 whitespace-nowrap">Rombel</span>
+            </div>
+
+            <!-- Step 4: Pairing RFID -->
+            <div class="reg-step-indicator flex flex-col items-center gap-1 cursor-pointer" data-step="4">
+              <div id="reg-step-badge-4" class="w-7 h-7 rounded-full bg-slate-100 text-slate-400 font-bold text-xs flex items-center justify-center transition-all">
+                4
+              </div>
+              <span id="reg-step-label-4" class="text-[10px] font-semibold text-slate-400 whitespace-nowrap">Kartu RFID</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Form Registration Container -->
+        <form id="register-student-form" novalidate class="space-y-4">
+          
+          <!-- Tahap 1: Pilih Jurusan -->
+          <div id="reg-panel-1" class="reg-step-panel space-y-3">
+            <div class="border-b border-slate-100 pb-2">
+              <h3 class="text-xs sm:text-sm font-bold text-slate-900">Pilih Jurusan</h3>
+              <p class="text-[11px] text-slate-400">Pilih program keahlian siswa.</p>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <!-- Jurusan RPL Card -->
+              <div id="card-jurusan-rpl" class="jurusan-card cursor-pointer p-3.5 rounded-2xl border-2 border-blue-600 bg-blue-50/50 hover:bg-blue-50 transition duration-200 relative group flex flex-col justify-between" data-jurusan="rpl">
+                <div class="flex items-start justify-between">
+                  <div class="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm">
+                    <span class="material-symbols-outlined text-xl">terminal</span>
+                  </div>
+                  <div id="radio-jurusan-rpl" class="w-5 h-5 rounded-full border-2 border-blue-600 bg-blue-600 text-white flex items-center justify-center text-[10px] font-black">
+                    ✓
+                  </div>
+                </div>
+                <div class="mt-2.5">
+                  <div class="flex items-center gap-1.5 mb-0.5">
+                    <h4 class="text-xs font-bold text-slate-900">Rekayasa Perangkat Lunak</h4>
+                    <span class="text-[9px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded font-mono">RPL</span>
+                  </div>
+                  <p class="text-[11px] text-slate-500">Teknologi & Pemrograman</p>
+                </div>
+              </div>
+
+              <!-- Jurusan AKL Card -->
+              <div id="card-jurusan-akl" class="jurusan-card cursor-pointer p-3.5 rounded-2xl border border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50 transition duration-200 relative group flex flex-col justify-between" data-jurusan="akl">
+                <div class="flex items-start justify-between">
+                  <div class="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-sm">
+                    <span class="material-symbols-outlined text-xl">account_balance</span>
+                  </div>
+                  <div id="radio-jurusan-akl" class="w-5 h-5 rounded-full border-2 border-slate-300 bg-white text-transparent flex items-center justify-center text-[10px] font-black">
+                    ✓
+                  </div>
+                </div>
+                <div class="mt-2.5">
+                  <div class="flex items-center gap-1.5 mb-0.5">
+                    <h4 class="text-xs font-bold text-slate-900">Akuntansi & Keuangan</h4>
+                    <span class="text-[9px] font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded font-mono">AKL</span>
+                  </div>
+                  <p class="text-[11px] text-slate-500">Akuntansi & Perbankan</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tahap 2: Data Pokok Siswa -->
+          <div id="reg-panel-2" class="reg-step-panel space-y-3 hidden">
+            <div class="border-b border-slate-100 pb-2">
+              <h3 class="text-xs sm:text-sm font-bold text-slate-900">Identitas Siswa</h3>
+              <p class="text-[11px] text-slate-400">Lengkapi data identitas resmi.</p>
+            </div>
+
+            <div>
+              <label for="reg-name-input" class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">Nama Lengkap *</label>
+              <input id="reg-name-input" required placeholder="Nama lengkap siswa" class="w-full text-xs font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 transition" />
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label for="reg-nisn-input" class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">NISN (10 Digit) *</label>
+                <input
+                  id="reg-nisn-input"
+                  type="text"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                  required
+                  maxlength="10"
+                  autocomplete="off"
+                  placeholder="10 digit NISN"
+                  class="w-full text-xs font-mono font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 transition"
+                />
+              </div>
+              <div>
+                <label for="reg-birth-display" class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">Tanggal Lahir</label>
+                <div class="relative flex items-center">
+                  <input
+                    id="reg-birth-display"
+                    type="text"
+                    readonly
+                    placeholder="Pilih tanggal"
+                    class="w-full text-xs font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 pr-16 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 transition cursor-pointer"
+                  />
+                  <button
+                    type="button"
+                    id="btn-pick-birth-date"
+                    class="absolute right-1.5 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white border border-blue-200 hover:border-blue-600 font-bold text-[11px] transition-all cursor-pointer z-20"
+                  >
+                    Pilih
+                  </button>
+                  <input
+                    id="reg-birth-input"
+                    type="date"
+                    tabindex="-1"
+                    aria-label="Pilih Tanggal Lahir"
+                    class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label for="reg-gender-select" class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">Jenis Kelamin</label>
+              <select id="reg-gender-select" class="w-full text-xs font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 transition">
+                <option value="L">Laki-laki</option>
+                <option value="P">Perempuan</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Tahap 3: Kelas & Rombel -->
+          <div id="reg-panel-3" class="reg-step-panel space-y-3 hidden">
+            <div class="border-b border-slate-100 pb-2">
+              <h3 class="text-xs sm:text-sm font-bold text-slate-900">Rombel & Kontak</h3>
+              <p class="text-[11px] text-slate-400">Pilih kelas dan kontak wali murid.</p>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label for="reg-class-select" class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">Rombel Kelas *</label>
+                <select id="reg-class-select" class="w-full text-xs font-semibold text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 transition">
+                </select>
+              </div>
+              <div>
+                <div class="flex items-center justify-between mb-1">
+                  <label for="reg-phone-input" class="block text-[11px] font-bold uppercase tracking-wider text-slate-600">No. WhatsApp *</label>
+                  <span id="reg-phone-counter" class="text-[10px] font-mono font-medium text-slate-400">0 / 10–13 digit</span>
+                </div>
+                <input
+                  id="reg-phone-input"
+                  type="tel"
+                  inputmode="numeric"
+                  pattern="^(08|628|\+628)[0-9]{8,11}$"
+                  required
+                  minlength="10"
+                  maxlength="15"
+                  placeholder="08xx / 628xx"
+                  class="w-full text-xs font-mono font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 transition"
+                />
+                <p id="reg-phone-feedback" class="text-[10px] text-slate-400 mt-1">Diawali 08/628 (10–13 digit).</p>
+              </div>
+            </div>
+
+            <div>
+              <label for="reg-address-input" class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">Alamat Tinggal</label>
+              <input id="reg-address-input" placeholder="Alamat domisili" class="w-full text-xs font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 transition" value="Padang Ratu, Lampung Tengah" />
+            </div>
+
+            <div>
+              <label for="reg-email-input" class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">Email (Opsional)</label>
+              <input id="reg-email-input" type="email" placeholder="nama.siswa@smkmaarif.sch.id" class="w-full text-xs font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 transition" />
+            </div>
+          </div>
+
+          <!-- Tahap 4: Pairing Kartu RFID -->
+          <div id="reg-panel-4" class="reg-step-panel space-y-3 hidden">
+            <div class="border-b border-slate-100 pb-2">
+              <h3 class="text-xs sm:text-sm font-bold text-slate-900">Kartu RFID</h3>
+              <p class="text-[11px] text-slate-400">Ketik nomor UID kartu fisik siswa.</p>
+            </div>
+
+            <!-- Virtual Card Compact Preview -->
+            <div class="rounded-xl bg-gradient-to-tr from-blue-700 to-indigo-700 text-white p-3.5 shadow-sm relative overflow-hidden">
+              <div class="flex items-center justify-between text-[10px] text-blue-200 font-bold mb-2">
+                <span>KARTU SISWA</span>
+                <span class="material-symbols-outlined text-sm">contactless</span>
+              </div>
+              <p id="reg-card-uid-preview" class="font-mono text-sm font-bold tracking-widest text-white mb-2">
+                ••• ••• •••
+              </p>
+              <div class="flex items-center justify-between text-xs pt-1.5 border-t border-blue-400/25">
+                <p id="reg-card-name-preview" class="font-semibold text-white truncate max-w-[180px]">Nama Siswa</p>
+                <span id="reg-card-class-preview" class="text-[10px] font-bold text-white bg-white/20 px-2 py-0.5 rounded">
+                  X RPL
+                </span>
+              </div>
+            </div>
+
+            <!-- RFID Input (9 Digit) -->
+            <div class="space-y-1">
+              <label for="reg-rfid-input" class="block text-[11px] font-bold uppercase tracking-wider text-slate-600">UID Kartu RFID (9 Digit) *</label>
+              <input
+                id="reg-rfid-input"
+                type="text"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                required
+                maxlength="9"
+                placeholder="9 digit nomor kartu"
+                class="w-full text-xs font-mono font-bold uppercase tracking-wider text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 transition"
+              />
+              <p class="text-[10px] text-slate-400">9 digit nomor kartu RFID fisik siswa.</p>
+            </div>
+
+            <!-- Compact Summary Info -->
+            <div class="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80 text-[11px] text-slate-600 flex items-center justify-between">
+              <div>
+                <span class="text-slate-400">Jurusan & Kelas: </span>
+                <span id="reg-summary-jurusan" class="font-bold text-slate-800">Rekayasa Perangkat Lunak (RPL)</span> • <span id="reg-summary-class" class="font-bold text-slate-800">X RPL</span>
+              </div>
+              <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">Siswa Aktif</span>
+            </div>
+          </div>
+
+          <!-- Alert Pesan Error di Modal -->
+          <div id="reg-alert-box" class="hidden p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium flex items-center gap-2">
+            <span class="material-symbols-outlined text-rose-600 text-sm shrink-0">error</span>
+            <span id="reg-alert-msg">Silakan lengkapi data wajib.</span>
+          </div>
+
+          <!-- Footer Buttons -->
+          <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+            <button type="button" id="btn-reg-prev" class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition cursor-pointer hidden">
+              Kembali
+            </button>
+            <div class="flex-1"></div>
+            <button type="button" id="btn-reg-cancel" class="px-3.5 py-2 rounded-xl text-slate-500 hover:text-slate-700 font-bold text-xs transition cursor-pointer">
+              Batal
+            </button>
+            <button type="button" id="btn-reg-next" class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-sm transition cursor-pointer flex items-center gap-1">
+              <span>Lanjut</span>
+              <span class="material-symbols-outlined text-sm">arrow_forward</span>
+            </button>
+            <button type="submit" id="btn-reg-submit" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition cursor-pointer hidden flex items-center gap-1">
+              <span class="material-symbols-outlined text-sm">check</span>
+              <span id="btn-reg-submit-label">Daftar Siswa</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Client-Side Form Logic -->
+    <script>
+      const inputName = document.getElementById('input-name') as HTMLInputElement;
+      const inputRfid = document.getElementById('input-rfid') as HTMLInputElement;
+      const alertBox = document.getElementById('login-alert-box');
+      const alertMsg = document.getElementById('login-alert-msg');
+      const submitBtn = document.getElementById('btn-submit-login') as HTMLButtonElement;
+      const btnSubmitText = document.getElementById('btn-submit-text');
+
+      function showAlert(msg: string) {
+        if (alertBox && alertMsg) {
+          alertMsg.textContent = msg;
+          alertBox.classList.remove('hidden');
+        }
+      }
+
+      function hideAlert() {
+        if (alertBox) alertBox.classList.add('hidden');
+      }
+
+      // Submit Form ke Backend (Backend memverifikasi dan membaca tag 'role' di Turso)
+      const form = document.getElementById('civitas-login-form') as HTMLFormElement;
+      let isSubmitting = false;
+
+      async function submitLogin(e?: Event) {
+        if (e) e.preventDefault();
+        if (isSubmitting) return;
+
+        hideAlert();
+
+        const name = inputName?.value.trim() || '';
+        const rfidUid = inputRfid?.value.trim().toUpperCase() || '';
+
+        const isAdmin = /^(admin|administrator|piket)$/i.test(name) || /^(admin|administrator|piket)$/i.test(rfidUid);
+
+        if (!isAdmin) {
+          if (!name) {
+            showAlert('Nama Lengkap wajib diisi.');
+            inputName?.focus();
+            return;
+          }
+          if (!rfidUid) {
+            showAlert('ID Kartu RFID wajib diisi.');
+            inputRfid?.focus();
+            return;
+          }
+        }
+
+        isSubmitting = true;
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = '<span class="material-symbols-outlined text-sm animate-spin">refresh</span><span>Memverifikasi...</span>';
+        }
+
+        try {
+          const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, rfidUid }),
+          });
+
+          const data = await res.json();
+
+          if (!res.ok) {
+            showAlert(data.message || 'Login gagal, periksa kembali data Anda.');
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.innerHTML = '<span id="btn-submit-text">Masuk</span><span class="material-symbols-outlined text-sm">arrow_forward</span>';
+            }
+            isSubmitting = false;
+            return;
+          }
+
+          // Simpan sesi autentikasi civitas di localStorage, sessionStorage, dan cookie
+          localStorage.setItem('auth_civitas', JSON.stringify(data.civitas));
+          localStorage.setItem('auth_role', data.role);
+          sessionStorage.setItem('auth_active', 'true');
+          document.cookie = `auth_session=${encodeURIComponent(data.role)}; path=/; max-age=86400; SameSite=Lax`;
+
+          if (submitBtn) {
+            submitBtn.className = 'w-full py-3 px-6 rounded-xl bg-emerald-600 text-white font-bold text-xs shadow-md flex items-center justify-center gap-2 cursor-pointer';
+            submitBtn.innerHTML = `<span class="material-symbols-outlined text-sm">check_circle</span><span>Terverifikasi sebagai ${data.roleLabel}! Mengalihkan...</span>`;
+          }
+
+          setTimeout(() => {
+            window.location.href = data.redirectUrl || `/profil-siswa?id=${data.civitas.id}&auth=true`;
+          }, 400);
+        } catch (err: any) {
+          showAlert('Koneksi server gagal: ' + err.message);
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<span id="btn-submit-text">Masuk</span><span class="material-symbols-outlined text-sm">arrow_forward</span>';
+          }
+          isSubmitting = false;
+        }
+      }
+
+      form?.addEventListener('submit', submitLogin);
+      submitBtn?.addEventListener('click', (e) => {
+        // Trigger submit jika browser tidak otomatis memicu form submit
+        if (!isSubmitting) submitLogin(e);
+      });
+
+      // Bypass Login (Masuk sebagai Admin Sekolah untuk Tahap Dev)
+      function bypassToAdmin() {
+        localStorage.setItem('auth_role', 'admin');
+        localStorage.setItem('auth_civitas', JSON.stringify({ id: 'ADM-001', name: 'Admin Piket (Dev)', role: 'admin' }));
+        sessionStorage.setItem('bypass_login', 'true');
+        sessionStorage.setItem('auth_active', 'true');
+        document.cookie = 'auth_session=admin; path=/; max-age=86400; SameSite=Lax';
+        window.location.href = '/';
+      }
+
+      document.getElementById('btn-dev-bypass')?.addEventListener('click', bypassToAdmin);
+      document.getElementById('btn-dev-bypass-pill')?.addEventListener('click', bypassToAdmin);
+
+      // ==========================================
+      // LOGIKA MODAL PENDAFTARAN SISWA MANDIRI
+      // ==========================================
+      const regModal = document.getElementById('register-modal');
+      const btnOpenRegModal = document.getElementById('btn-open-register-modal') as HTMLButtonElement;
+      const btnCloseRegModal = document.getElementById('btn-close-register-modal') as HTMLButtonElement;
+      const btnCancelReg = document.getElementById('btn-reg-cancel') as HTMLButtonElement;
+      const btnRegPrev = document.getElementById('btn-reg-prev') as HTMLButtonElement;
+      const btnRegNext = document.getElementById('btn-reg-next') as HTMLButtonElement;
+      const btnRegSubmit = document.getElementById('btn-reg-submit') as HTMLButtonElement;
+      const btnRegSubmitLabel = document.getElementById('btn-reg-submit-label');
+      const regAlertBox = document.getElementById('reg-alert-box');
+      const regAlertMsg = document.getElementById('reg-alert-msg');
+      const regProgressBar = document.getElementById('reg-stepper-progress-line');
+
+      const cardJurusanRpl = document.getElementById('card-jurusan-rpl');
+      const cardJurusanAkl = document.getElementById('card-jurusan-akl');
+      const radioJurusanRpl = document.getElementById('radio-jurusan-rpl');
+      const radioJurusanAkl = document.getElementById('radio-jurusan-akl');
+
+      const regNameInput = document.getElementById('reg-name-input') as HTMLInputElement;
+      const regNisnInput = document.getElementById('reg-nisn-input') as HTMLInputElement;
+      const regBirthInput = document.getElementById('reg-birth-input') as HTMLInputElement;
+      const regBirthDisplay = document.getElementById('reg-birth-display') as HTMLInputElement;
+      const regGenderSelect = document.getElementById('reg-gender-select') as HTMLSelectElement;
+      const regClassSelect = document.getElementById('reg-class-select') as HTMLSelectElement;
+      const regPhoneInput = document.getElementById('reg-phone-input') as HTMLInputElement;
+      const regAddressInput = document.getElementById('reg-address-input') as HTMLInputElement;
+      const regEmailInput = document.getElementById('reg-email-input') as HTMLInputElement;
+      const regRfidInput = document.getElementById('reg-rfid-input') as HTMLInputElement;
+
+      const regPhoneCounter = document.getElementById('reg-phone-counter');
+      const regPhoneFeedback = document.getElementById('reg-phone-feedback');
+
+      function validateWhatsApp(phone: string): { valid: boolean; message: string } {
+        const cleaned = phone.replace(/[\s\-\.]/g, '');
+        if (!cleaned) {
+          return { valid: false, message: 'Nomor WhatsApp wajib diisi.' };
+        }
+        if (!/^\+?[0-9]+$/.test(cleaned)) {
+          return { valid: false, message: 'Nomor WhatsApp hanya boleh berisi angka.' };
+        }
+        if (cleaned.startsWith('08')) {
+          if (cleaned.length < 10) {
+            return { valid: false, message: `Nomor WhatsApp kurang (${cleaned.length} digit). Wajib minimal 10 digit (contoh: 0812345678).` };
+          }
+          if (cleaned.length > 13) {
+            return { valid: false, message: `Nomor WhatsApp berlebih (${cleaned.length} digit). Maksimal 13 digit (contoh: 082177889900).` };
+          }
+          return { valid: true, message: `Nomor WhatsApp valid (${cleaned.length} digit).` };
+        } else if (cleaned.startsWith('628')) {
+          if (cleaned.length < 11) {
+            return { valid: false, message: `Nomor WhatsApp format 628 kurang (${cleaned.length} digit). Minimal 11 digit.` };
+          }
+          if (cleaned.length > 14) {
+            return { valid: false, message: `Nomor WhatsApp format 628 berlebih (${cleaned.length} digit). Maksimal 14 digit.` };
+          }
+          return { valid: true, message: `Nomor WhatsApp valid (${cleaned.length} digit).` };
+        } else if (cleaned.startsWith('+628')) {
+          if (cleaned.length < 12) {
+            return { valid: false, message: `Nomor WhatsApp format +628 kurang (${cleaned.length - 1} digit). Minimal 11 digit.` };
+          }
+          if (cleaned.length > 15) {
+            return { valid: false, message: `Nomor WhatsApp format +628 berlebih (${cleaned.length - 1} digit). Maksimal 14 digit.` };
+          }
+          return { valid: true, message: `Nomor WhatsApp valid (${cleaned.length - 1} digit).` };
+        } else {
+          return { valid: false, message: 'Nomor WhatsApp harus diawali 08 atau 628 (contoh: 082177889900).' };
+        }
+      }
+
+      regPhoneInput?.addEventListener('input', () => {
+        const val = regPhoneInput.value.trim();
+        const digitsOnly = val.replace(/[^0-9]/g, '');
+        const res = validateWhatsApp(val);
+
+        if (regPhoneCounter) {
+          regPhoneCounter.textContent = `${digitsOnly.length} / 10–13 digit`;
+          if (res.valid) {
+            regPhoneCounter.className = 'text-[10px] font-mono font-bold text-emerald-600';
+          } else if (digitsOnly.length === 0) {
+            regPhoneCounter.className = 'text-[10px] font-mono font-bold text-slate-400';
+          } else {
+            regPhoneCounter.className = 'text-[10px] font-mono font-bold text-rose-500';
+          }
+        }
+
+        if (regPhoneFeedback) {
+          if (!val) {
+            regPhoneFeedback.textContent = 'Wajib diawali 08 atau 628 (panjang 10–13 digit).';
+            regPhoneFeedback.className = 'text-[10px] text-slate-500 mt-1';
+          } else if (res.valid) {
+            regPhoneFeedback.textContent = `✓ ${res.message}`;
+            regPhoneFeedback.className = 'text-[10px] text-emerald-600 font-bold mt-1';
+          } else {
+            regPhoneFeedback.textContent = `⚠ ${res.message}`;
+            regPhoneFeedback.className = 'text-[10px] text-rose-600 font-medium mt-1';
+          }
+        }
+      });
+
+      const regCardUidPreview = document.getElementById('reg-card-uid-preview');
+      const regCardNamePreview = document.getElementById('reg-card-name-preview');
+      const regCardClassPreview = document.getElementById('reg-card-class-preview');
+      const regSummaryJurusan = document.getElementById('reg-summary-jurusan');
+      const regSummaryClass = document.getElementById('reg-summary-class');
+
+      let currentRegStep = 1;
+      let selectedJurusan: 'rpl' | 'akl' = 'rpl';
+
+      const rplClasses = ['X RPL', 'XI RPL', 'XII RPL'];
+      const aklClasses = ['X AKL', 'XI AKL', 'XII AKL'];
+
+      function populateClasses(jurusan: 'rpl' | 'akl') {
+        if (!regClassSelect) return;
+        const list = jurusan === 'rpl' ? rplClasses : aklClasses;
+        regClassSelect.innerHTML = list.map((c) => `<option value="${c}">${c}</option>`).join('');
+      }
+
+      function selectJurusan(jurusan: 'rpl' | 'akl') {
+        selectedJurusan = jurusan;
+        if (jurusan === 'rpl') {
+          cardJurusanRpl?.classList.add('border-2', 'border-blue-600', 'bg-blue-50/60', 'shadow-sm');
+          cardJurusanRpl?.classList.remove('border-slate-200', 'bg-white');
+          radioJurusanRpl?.classList.add('border-blue-600', 'bg-blue-600', 'text-white');
+          radioJurusanRpl?.classList.remove('border-slate-300', 'bg-white', 'text-transparent');
+
+          cardJurusanAkl?.classList.remove('border-2', 'border-blue-600', 'border-emerald-600', 'bg-blue-50/60', 'bg-emerald-50/60', 'shadow-sm');
+          cardJurusanAkl?.classList.add('border', 'border-slate-200', 'bg-white');
+          radioJurusanAkl?.classList.remove('border-emerald-600', 'bg-emerald-600', 'text-white');
+          radioJurusanAkl?.classList.add('border-slate-300', 'bg-white', 'text-transparent');
+
+          if (regSummaryJurusan) regSummaryJurusan.textContent = 'Rekayasa Perangkat Lunak (RPL)';
+        } else {
+          cardJurusanAkl?.classList.add('border-2', 'border-emerald-600', 'bg-emerald-50/60', 'shadow-sm');
+          cardJurusanAkl?.classList.remove('border-slate-200', 'bg-white');
+          radioJurusanAkl?.classList.add('border-emerald-600', 'bg-emerald-600', 'text-white');
+          radioJurusanAkl?.classList.remove('border-slate-300', 'bg-white', 'text-transparent');
+
+          cardJurusanRpl?.classList.remove('border-2', 'border-blue-600', 'bg-blue-50/60', 'shadow-sm');
+          cardJurusanRpl?.classList.add('border', 'border-slate-200', 'bg-white');
+          radioJurusanRpl?.classList.remove('border-blue-600', 'bg-blue-600', 'text-white');
+          radioJurusanRpl?.classList.add('border-slate-300', 'bg-white', 'text-transparent');
+
+          if (regSummaryJurusan) regSummaryJurusan.textContent = 'Akuntansi & Keuangan Lembaga (AKL)';
+        }
+        populateClasses(jurusan);
+      }
+
+      cardJurusanRpl?.addEventListener('click', () => selectJurusan('rpl'));
+      cardJurusanAkl?.addEventListener('click', () => selectJurusan('akl'));
+
+      function showRegAlert(msg: string) {
+        if (regAlertBox && regAlertMsg) {
+          regAlertMsg.textContent = msg;
+          regAlertBox.classList.remove('hidden');
+        }
+      }
+
+      function hideRegAlert() {
+        if (regAlertBox) regAlertBox.classList.add('hidden');
+      }
+
+      function setRegStep(step: number) {
+        currentRegStep = step;
+        hideRegAlert();
+
+        // Update progress bar
+        const progressPercent = ((step - 1) / 3) * 100;
+        if (regProgressBar) regProgressBar.style.width = `${progressPercent}%`;
+
+        for (let i = 1; i <= 4; i++) {
+          const badge = document.getElementById(`reg-step-badge-${i}`);
+          const label = document.getElementById(`reg-step-label-${i}`);
+          const panel = document.getElementById(`reg-panel-${i}`);
+
+          if (i < step) {
+            badge?.classList.add('bg-emerald-600', 'text-white');
+            badge?.classList.remove('bg-blue-600', 'bg-slate-100', 'text-slate-400');
+            if (badge) badge.textContent = '✓';
+            label?.classList.add('text-emerald-700', 'font-bold');
+            label?.classList.remove('text-blue-700', 'text-slate-400');
+            panel?.classList.add('hidden');
+          } else if (i === step) {
+            badge?.classList.add('bg-blue-600', 'text-white', 'shadow-md', 'shadow-blue-500/30');
+            badge?.classList.remove('bg-emerald-600', 'bg-slate-100', 'text-slate-400');
+            if (badge) badge.textContent = String(i);
+            label?.classList.add('text-blue-700', 'font-bold');
+            label?.classList.remove('text-emerald-700', 'text-slate-400');
+            panel?.classList.remove('hidden');
+          } else {
+            badge?.classList.add('bg-slate-100', 'text-slate-400');
+            badge?.classList.remove('bg-blue-600', 'bg-emerald-600', 'text-white', 'shadow-md');
+            if (badge) badge.textContent = String(i);
+            label?.classList.add('text-slate-400', 'font-semibold');
+            label?.classList.remove('text-blue-700', 'text-emerald-700', 'font-bold');
+            panel?.classList.add('hidden');
+          }
+        }
+
+        if (btnRegPrev) btnRegPrev.classList.toggle('hidden', step === 1);
+
+        if (btnRegNext && btnRegSubmit) {
+          if (step === 4) {
+            btnRegNext.classList.add('hidden');
+            btnRegSubmit.classList.remove('hidden');
+            const nameVal = regNameInput?.value.trim() || 'Nama Lengkap Siswa';
+            const classVal = regClassSelect?.value || (selectedJurusan === 'rpl' ? 'X RPL' : 'X AKL');
+            const rfidVal = regRfidInput?.value.trim().toUpperCase() || '';
+            if (regCardNamePreview) regCardNamePreview.textContent = nameVal;
+            if (regCardClassPreview) regCardClassPreview.textContent = classVal;
+            if (regCardUidPreview) regCardUidPreview.textContent = formatRfidPreview(rfidVal);
+            if (regSummaryClass) regSummaryClass.textContent = classVal;
+          } else {
+            btnRegNext.classList.remove('hidden');
+            btnRegSubmit.classList.add('hidden');
+            btnRegNext.innerHTML = '<span>Lanjut</span><span class="material-symbols-outlined text-sm">arrow_forward</span>';
+          }
+        }
+      }
+
+      btnRegNext?.addEventListener('click', () => {
+        hideRegAlert();
+        if (currentRegStep === 1) {
+          setRegStep(2);
+        } else if (currentRegStep === 2) {
+          const name = regNameInput?.value.trim();
+          const nisn = regNisnInput?.value.trim();
+          if (!name) {
+            showRegAlert('Nama lengkap wajib diisi.');
+            regNameInput?.focus();
+            return;
+          }
+          if (!nisn || !/^[0-9]{5,10}$/.test(nisn)) {
+            showRegAlert('NISN harus 5–10 digit angka.');
+            regNisnInput?.focus();
+            return;
+          }
+          setRegStep(3);
+        } else if (currentRegStep === 3) {
+          const phone = regPhoneInput?.value.trim() || '';
+          const phoneCheck = validateWhatsApp(phone);
+          if (!phoneCheck.valid) {
+            showRegAlert(phoneCheck.message);
+            regPhoneInput?.focus();
+            return;
+          }
+          setRegStep(4);
+        }
+      });
+
+      btnRegPrev?.addEventListener('click', () => {
+        if (currentRegStep > 1) {
+          setRegStep(currentRegStep - 1);
+        }
+      });
+
+      regNisnInput?.addEventListener('input', () => {
+        const cleaned = regNisnInput.value.replace(/[^0-9]/g, '');
+        if (regNisnInput.value !== cleaned) regNisnInput.value = cleaned;
+      });
+
+      function formatRfidPreview(val: string): string {
+        if (!val) return '••• ••• •••';
+        if (val.length <= 9) {
+          return val.match(/.{1,3}/g)?.join(' ') || val;
+        }
+        return val.match(/.{1,4}/g)?.join(' ') || val;
+      }
+
+      regRfidInput?.addEventListener('input', () => {
+        const cleaned = regRfidInput.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        if (regRfidInput.value !== cleaned) regRfidInput.value = cleaned;
+        if (regCardUidPreview) {
+          regCardUidPreview.textContent = formatRfidPreview(cleaned);
+        }
+      });
+
+      // Buka & Tutup Modal
+      function openRegModal() {
+        currentRegStep = 1;
+        selectJurusan('rpl');
+        setRegStep(1);
+        hideRegAlert();
+        if (regBirthInput) regBirthInput.value = '';
+        if (regBirthDisplay) regBirthDisplay.value = '';
+        regModal?.classList.remove('hidden');
+        regModal?.classList.add('flex');
+      }
+
+      function closeRegModal() {
+        regModal?.classList.add('hidden');
+        regModal?.classList.remove('flex');
+      }
+
+      btnOpenRegModal?.addEventListener('click', openRegModal);
+      btnCloseRegModal?.addEventListener('click', closeRegModal);
+      btnCancelReg?.addEventListener('click', closeRegModal);
+
+      function formatIndonesianDate(isoStr: string): string {
+        if (!isoStr) return '';
+        if (isoStr.includes(' ')) return isoStr;
+        const parts = isoStr.split('-');
+        if (parts.length === 3) {
+          const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+          const idx = parseInt(parts[1], 10) - 1;
+          const day = parseInt(parts[2], 10);
+          if (months[idx]) return `${day} ${months[idx]} ${parts[0]}`;
+        }
+        return isoStr;
+      }
+
+      const updateBirthDisplay = () => {
+        if (regBirthDisplay && regBirthInput?.value) {
+          regBirthDisplay.value = formatIndonesianDate(regBirthInput.value);
+        }
+      };
+
+      regBirthInput?.addEventListener('change', updateBirthDisplay);
+      regBirthInput?.addEventListener('input', updateBirthDisplay);
+
+      const openCalendarPicker = () => {
+        try {
+          if (typeof (regBirthInput as any).showPicker === 'function') {
+            (regBirthInput as any).showPicker();
+          }
+        } catch (_) {}
+      };
+
+      regBirthInput?.addEventListener('click', openCalendarPicker);
+      regBirthInput?.addEventListener('pointerdown', openCalendarPicker);
+
+      const btnPickBirthDate = document.getElementById('btn-pick-birth-date') as HTMLButtonElement;
+      btnPickBirthDate?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openCalendarPicker();
+      });
+      btnPickBirthDate?.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+        openCalendarPicker();
+      });
+
+      // Form Submit: Register Student
+      const regForm = document.getElementById('register-student-form');
+      regForm?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        hideRegAlert();
+
+        const name = regNameInput?.value.trim();
+        const identifier = regNisnInput?.value.trim();
+
+        if (!name) {
+          showRegAlert('Nama lengkap wajib diisi.');
+          setRegStep(2);
+          regNameInput?.focus();
+          return;
+        }
+
+        if (!identifier || !/^[0-9]{5,10}$/.test(identifier)) {
+          showRegAlert('NISN harus 5–10 digit angka.');
+          setRegStep(2);
+          regNisnInput?.focus();
+          return;
+        }
+
+        const birthDateRaw = regBirthInput?.value.trim() || '';
+        const birthDate = formatIndonesianDate(birthDateRaw) || '12 Mei 2007';
+        const gender = regGenderSelect?.value || 'L';
+        const className = regClassSelect?.value || (selectedJurusan === 'rpl' ? 'X RPL' : 'X AKL');
+        const phone = regPhoneInput?.value.trim() || '';
+        const phoneCheck = validateWhatsApp(phone);
+        if (!phoneCheck.valid) {
+          showRegAlert(phoneCheck.message);
+          setRegStep(3);
+          regPhoneInput?.focus();
+          return;
+        }
+
+        const address = regAddressInput?.value.trim() || 'Padang Ratu, Lampung Tengah';
+        const email = regEmailInput?.value.trim() || `${name.toLowerCase().replace(/[^a-z0-9]/g, '.')}@smkmaarif.sch.id`;
+        const rfidUid = regRfidInput?.value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+        if (!rfidUid || rfidUid.length !== 9) {
+          showRegAlert('UID Kartu RFID harus 9 digit.');
+          regRfidInput?.focus();
+          return;
+        }
+
+        if (btnRegSubmit && btnRegSubmitLabel) {
+          btnRegSubmit.disabled = true;
+          btnRegSubmitLabel.textContent = 'Mendaftarkan...';
+        }
+
+        try {
+          const res = await fetch('/api/students', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name,
+              identifier,
+              role: 'siswa',
+              category: selectedJurusan,
+              className,
+              address,
+              phone,
+              email,
+              birthDate,
+              gender,
+              rfidUid,
+            }),
+          });
+
+          const data = await res.json();
+          if (!res.ok) {
+            showRegAlert(data.message || 'Pendaftaran gagal, periksa kembali data Anda.');
+            if (btnRegSubmit && btnRegSubmitLabel) {
+              btnRegSubmit.disabled = false;
+              btnRegSubmitLabel.textContent = 'Daftar Siswa';
+            }
+            return;
+          }
+
+          const newStudent = data.data;
+
+          // Simpan sesi autentikasi civitas
+          localStorage.setItem('auth_civitas', JSON.stringify(newStudent));
+          localStorage.setItem('auth_role', 'siswa');
+          sessionStorage.setItem('auth_active', 'true');
+          document.cookie = 'auth_session=siswa; path=/; max-age=86400; SameSite=Lax';
+
+          if (btnRegSubmit && btnRegSubmitLabel) {
+            btnRegSubmit.className = 'px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold text-xs shadow-sm flex items-center gap-1.5 cursor-pointer';
+            btnRegSubmit.innerHTML = '<span class="material-symbols-outlined text-sm">check_circle</span><span>Pendaftaran Berhasil!</span>';
+          }
+
+          setTimeout(() => {
+            window.location.href = `/profil-siswa?id=${newStudent.id}&auth=true`;
+          }, 800);
+        } catch (err: any) {
+          showRegAlert('Koneksi server gagal: ' + err.message);
+          if (btnRegSubmit && btnRegSubmitLabel) {
+            btnRegSubmit.disabled = false;
+            btnRegSubmitLabel.textContent = 'Daftar Siswa';
+          }
+        }
+      });
+    </script>
+  </body>
+</html>

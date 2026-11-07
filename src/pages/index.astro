@@ -1,0 +1,788 @@
+---
+/**
+ * @file src/pages/index.astro
+ * @description Halaman Utama: Dashboard Presensi & Analisis Kehadiran Siswa & Guru
+ */
+export const prerender = false;
+
+const authSession = Astro.cookies.get('auth_session')?.value;
+if (!authSession) {
+  return Astro.redirect('/login');
+}
+if (authSession === 'siswa') {
+  return Astro.redirect('/profil-siswa');
+}
+
+import Layout from '../layouts/Layout.astro';
+import '../styles/global.css'; 
+---
+
+<Layout title="Data Presensi" activeNav="data-presensi">
+  <!-- 3 KARTU METRIK UTAMA -->
+  <section class="grid grid-cols-1 md:grid-cols-3 gap-5" data-purpose="percentage-metric-cards">
+    <!-- KARTU 1: VIVID BLUE (Siswa Hadir Tepat Waktu) -->
+    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white p-6 shadow-sm border border-white/10 flex flex-col justify-between min-h-[160px] transition-transform hover:-translate-y-0.5 duration-200">
+      <div class="relative z-10">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-blue-100">Hadir Tepat</h3>
+        <div class="mt-2 flex items-baseline gap-2">
+          <span id="metric-hadir-pct" class="text-3xl lg:text-4xl font-black tracking-tight">0%</span>
+          <span id="metric-hadir-count" class="text-xs font-semibold text-blue-100">0 / 0 Siswa</span>
+        </div>
+      </div>
+      <div class="relative z-10 mt-4">
+        <a href="/siswa-guru" class="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 active:scale-95 transition text-white">
+          <span>Detail Siswa</span>
+          <span class="material-symbols-outlined text-sm">arrow_forward</span>
+        </a>
+      </div>
+      <!-- Minimalist Icon Watermark -->
+      <div class="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none opacity-20">
+        <span class="material-symbols-outlined text-7xl select-none">check_circle</span>
+      </div>
+    </div>
+
+    <!-- KARTU 2: CYAN / SKY BLUE (Siswa Terlambat) -->
+    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-cyan-600 to-sky-600 text-white p-6 shadow-sm border border-white/10 flex flex-col justify-between min-h-[160px] transition-transform hover:-translate-y-0.5 duration-200">
+      <div class="relative z-10">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-cyan-100">Terlambat</h3>
+        <div class="mt-2 flex items-baseline gap-2">
+          <span id="metric-terlambat-pct" class="text-3xl lg:text-4xl font-black tracking-tight">0%</span>
+          <span id="metric-terlambat-count" class="text-xs font-semibold text-cyan-100">0 / 0 Siswa</span>
+        </div>
+      </div>
+      <div class="relative z-10 mt-4">
+        <a href="/siswa-guru" class="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 active:scale-95 transition text-white">
+          <span>Detail Terlambat</span>
+          <span class="material-symbols-outlined text-sm">arrow_forward</span>
+        </a>
+      </div>
+      <!-- Minimalist Icon Watermark -->
+      <div class="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none opacity-20">
+        <span class="material-symbols-outlined text-7xl select-none">schedule</span>
+      </div>
+    </div>
+
+    <!-- KARTU 3: SLATE (Belum Absen) -->
+    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-600 to-slate-800 text-white p-6 shadow-sm border border-white/10 flex flex-col justify-between min-h-[160px] transition-transform hover:-translate-y-0.5 duration-200">
+      <div class="relative z-10">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-200">Belum Absen</h3>
+        <div class="mt-2 flex items-baseline gap-2">
+          <span id="metric-belum-pct" class="text-3xl lg:text-4xl font-black tracking-tight">100%</span>
+          <span id="metric-belum-count" class="text-xs font-semibold text-slate-200">0 / 0 Siswa</span>
+        </div>
+      </div>
+      <div class="relative z-10 mt-4">
+        <a href="/siswa-guru" class="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 active:scale-95 transition text-white">
+          <span>Detail Siswa</span>
+          <span class="material-symbols-outlined text-sm">arrow_forward</span>
+        </a>
+      </div>
+      <!-- Minimalist Icon Watermark -->
+      <div class="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none opacity-20">
+        <span class="material-symbols-outlined text-7xl select-none">person_off</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- KONTEN STATISTIK & ANALITIK UTAMA -->
+  <section class="space-y-4" id="table-section">
+    <!-- Main Card Container -->
+    <div class="bg-white rounded-3xl p-6 sm:p-7 shadow-xs border border-slate-200/80 space-y-6">
+      <!-- Section Header -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+        <div>
+          <h2 class="text-base sm:text-lg font-black text-slate-900 tracking-tight">Statistik Kehadiran</h2>
+          <p class="text-xs text-slate-400 mt-0.5">Presensi siswa hari ini.</p>
+        </div>
+        <div>
+          <a href="/rekapitulasi" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 text-xs font-bold transition border border-slate-200 hover:border-blue-200 shadow-2xs active:scale-95">
+            <span class="material-symbols-outlined text-base">summarize</span>
+            <span>Rekapitulasi</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- REALTIME LIVE FEED GERBANG RFID -->
+      <div class="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 space-y-2.5">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="relative flex h-2 w-2">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider">ABSEN TERBARU</h3>
+          </div>
+          <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 border border-emerald-200/80">
+           REALTIME   
+          </span>
+        </div>
+
+        <div id="live-feed-container" class="space-y-2 max-h-48 overflow-y-auto">
+          <div id="live-feed-empty" class="text-center py-4 text-xs text-slate-400 font-medium">
+            belum ada yang absen hari ini...  
+          </div>
+        </div>
+      </div>
+
+      <!-- 4 Grid Circular Donut Statistics -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5 pt-1">
+        <!-- DIAGRAM 1: Rasio Kehadiran Keseluruhan -->
+        <div class="rounded-3xl border border-slate-200/80 p-5 bg-white shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-blue-600"></span>
+                Rasio Kehadiran siswa 
+              </h3>
+              <p id="d1-subtitle" class="text-[11px] text-slate-400 mt-0.5">Presensi siswa hari ini.</p>
+            </div>
+            <span id="d1-badge" class="text-[11px] font-bold text-slate-600 bg-slate-100 border border-slate-200 px-2.5 py-0.5">0 Scan</span>
+          </div>
+
+          <div class="flex flex-col sm:flex-row items-center justify-center gap-6 my-2">
+            <div class="relative w-40 h-40 shrink-0 flex items-center justify-center">
+              <svg id="d1-svg" class="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="38" fill="none" stroke="#e2e8f0" stroke-width="12"></circle>
+              </svg>
+              <div class="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
+                <span id="d1-center-pct" class="text-2xl font-black tracking-tight text-slate-900 leading-none">0.0%</span>
+                <span class="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-wider">Kehadiran</span>
+              </div>
+            </div>
+
+            <div class="space-y-1.5 w-full max-w-[280px] text-xs">
+              <div class="flex items-center justify-between p-1.5 rounded-xl bg-slate-50 border border-slate-100">
+                <div class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-blue-600 shrink-0"></span>
+                  <span class="text-slate-600 font-medium">Hadir Tepat</span>
+                </div>
+                <span id="d1-tepat-waktu" class="font-bold text-slate-900">0 (0.0%)</span>
+              </div>
+              <div class="flex items-center justify-between p-1.5 rounded-xl bg-slate-50 border border-slate-100">
+                <div class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-cyan-500 shrink-0"></span>
+                  <span class="text-slate-600 font-medium">Terlambat</span>
+                </div>
+                <span id="d1-terlambat" class="font-bold text-slate-900">0 (0.0%)</span>
+              </div>
+              <div class="flex items-center justify-between p-1.5 rounded-xl bg-slate-50 border border-slate-100">
+                <div class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>
+                  <span class="text-slate-600 font-medium">Izin / Disp</span>
+                </div>
+                <span id="d1-izin" class="font-bold text-slate-900">0 (0.0%)</span>
+              </div>
+              <div class="flex items-center justify-between p-1.5 rounded-xl bg-slate-50 border border-slate-100">
+                <div class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-rose-500 shrink-0"></span>
+                  <span class="text-slate-600 font-medium">Sakit & Alpa</span>
+                </div>
+                <span id="d1-sakit-alpa" class="font-bold text-slate-900">0 (0.0%)</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+            <span>Target: <strong class="text-slate-700">90%</strong></span>
+            <span id="d1-footer-status" class="text-blue-600 font-bold">-</span>
+          </div>
+        </div>
+
+        <!-- DIAGRAM 2: Kehadiran Jurusan -->
+        <div class="rounded-3xl border border-slate-200/80 p-5 bg-white shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-indigo-600"></span>
+                Kehadiran Jurusan
+              </h3>
+              <p id="d2-subtitle" class="text-[11px] text-slate-400 mt-0.5">Persentase RPL & AKL.</p>
+            </div>
+            <span class="text-[11px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded-full">2 Jurusan</span>
+          </div>
+
+          <div class="flex flex-col sm:flex-row items-center justify-center gap-6 my-2">
+            <div class="relative w-40 h-40 shrink-0 flex items-center justify-center">
+              <svg id="d2-svg" class="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="38" fill="none" stroke="#e2e8f0" stroke-width="12"></circle>
+              </svg>
+              <div class="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
+                <span id="d2-center-pct" class="text-xl font-black tracking-tight text-slate-900 leading-none">0.0%</span>
+                <span class="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-wider">Rata-rata</span>
+              </div>
+            </div>
+
+            <div class="space-y-2 w-full max-w-[280px] text-xs">
+              <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                <div class="flex items-center gap-2">
+                  <span class="w-2.5 h-2.5 rounded-sm bg-blue-500 shrink-0"></span>
+                  <span class="text-slate-800 font-bold">RPL</span>
+                </div>
+                <span id="d2-rpl-val" class="font-black text-blue-600 font-mono">0.0%</span>
+              </div>
+              <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                <div class="flex items-center gap-2">
+                  <span class="w-2.5 h-2.5 rounded-sm bg-purple-500 shrink-0"></span>
+                  <span class="text-slate-800 font-bold">AKL</span>
+                </div>
+                <span id="d2-akl-val" class="font-black text-purple-600 font-mono">0.0%</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+            <span>Terdisiplin: <strong id="d2-best-jurusan" class="text-slate-700">-</strong></span>
+            <span id="d2-footer-status" class="text-emerald-600 font-bold">-</span>
+          </div>
+        </div>
+
+        <!-- DIAGRAM 3: Izin & Sakit -->
+        <div class="rounded-3xl border border-slate-200/80 p-5 bg-white shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                Izin & Sakit
+              </h3>
+              <p id="d3-subtitle" class="text-[11px] text-slate-400 mt-0.5">Rincian perizinan siswa.</p>
+            </div>
+            <span id="d3-badge" class="text-[11px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-0.5 rounded-full">0 Berkas</span>
+          </div>
+
+          <div class="flex flex-col sm:flex-row items-center justify-center gap-6 my-2">
+            <div class="relative w-40 h-40 shrink-0 flex items-center justify-center">
+              <svg id="d3-svg" class="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="38" fill="none" stroke="#e2e8f0" stroke-width="12"></circle>
+              </svg>
+              <div class="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
+                <span id="d3-center-pct" class="text-2xl font-black tracking-tight text-slate-900 leading-none">100%</span>
+                <span class="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-wider">Izin Sah</span>
+              </div>
+            </div>
+
+            <div class="space-y-1.5 w-full max-w-[280px] text-xs">
+              <div class="flex items-center justify-between p-1.5 rounded-xl bg-slate-50 border border-slate-100">
+                <div class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+                  <span class="text-slate-600 font-medium">Sakit</span>
+                </div>
+                <span id="d3-sakit" class="font-bold text-slate-900">0 (0%)</span>
+              </div>
+              <div class="flex items-center justify-between p-1.5 rounded-xl bg-slate-50 border border-slate-100">
+                <div class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-blue-500 shrink-0"></span>
+                  <span class="text-slate-600 font-medium">Dispensasi</span>
+                </div>
+                <span id="d3-dispensasi" class="font-bold text-slate-900">0 (0%)</span>
+              </div>
+              <div class="flex items-center justify-between p-1.5 rounded-xl bg-slate-50 border border-slate-100">
+                <div class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>
+                  <span class="text-slate-600 font-medium">Izin</span>
+                </div>
+                <span id="d3-keluarga" class="font-bold text-slate-900">0 (0%)</span>
+              </div>
+              <div class="flex items-center justify-between p-1.5 rounded-xl bg-slate-50 border border-slate-100">
+                <div class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-rose-500 shrink-0"></span>
+                  <span class="text-slate-600 font-medium">Alpa</span>
+                </div>
+                <span id="d3-alpa" class="font-bold text-rose-600">0 (0%)</span>
+              </div>
+            </div>
+          </div>
+
+          <a href="/izin-dispensasi" class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400 hover:text-blue-600 transition group">
+            <span id="d3-footer-verifikasi">Valid: <strong id="d3-verifikasi-count" class="text-emerald-700">0 / 0</strong></span>
+            <span id="d3-footer-pending" class="text-blue-600 font-bold group-hover:underline flex items-center gap-1">0 Perlu Dicek <span class="material-symbols-outlined text-[13px]">arrow_forward</span></span>
+          </a>
+        </div>
+
+        <!-- DIAGRAM 4: Disiplin Jam Kedatangan -->
+        <div class="rounded-3xl border border-slate-200/80 p-5 bg-white shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                Jam Kedatangan
+              </h3>
+              <p id="d4-subtitle" class="text-[11px] text-slate-400 mt-0.5">Ketepatan waktu siswa.</p>
+            </div>
+            <span id="d4-badge" class="text-[11px] font-bold text-slate-600 bg-slate-100 border border-slate-200 px-2.5 py-0.5 rounded-full">Grade -</span>
+          </div>
+
+          <div class="flex flex-col sm:flex-row items-center justify-center gap-6 my-2">
+            <div class="relative w-40 h-40 shrink-0 flex items-center justify-center">
+              <svg id="d4-svg" class="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="38" fill="none" stroke="#e2e8f0" stroke-width="12"></circle>
+              </svg>
+              <div class="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
+                <span id="d4-center-pct" class="text-2xl font-black tracking-tight text-emerald-600 leading-none">0.0%</span>
+                <span class="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-wider">Tepat Waktu</span>
+              </div>
+            </div>
+
+            <div class="space-y-1.5 w-full max-w-[280px] text-xs">
+              <div class="flex items-center justify-between p-1.5 rounded-xl bg-slate-50 border border-slate-100">
+                <div class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+                  <div class="text-slate-800 font-bold">&lt; 07:00 WIB</div>
+                </div>
+                <span id="d4-awal" class="font-bold text-emerald-600">0 (0.0%)</span>
+              </div>
+              <div class="flex items-center justify-between p-1.5 rounded-xl bg-slate-50 border border-slate-100">
+                <div class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-blue-500 shrink-0"></span>
+                  <div class="text-slate-800 font-bold">07:00 - 07:15</div>
+                </div>
+                <span id="d4-standar" class="font-bold text-blue-600">0 (0.0%)</span>
+              </div>
+              <div class="flex items-center justify-between p-1.5 rounded-xl bg-slate-50 border border-slate-100">
+                <div class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>
+                  <div class="text-slate-800 font-bold">&gt; 07:15 WIB</div>
+                </div>
+                <span id="d4-lewat" class="font-bold text-amber-600">0 (0.0%)</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+            <span>Puncak: <strong id="d4-puncak-range" class="text-slate-700">-</strong></span>
+            <span id="d4-footer-rata" class="text-slate-500 font-medium">-</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    function renderDonutSvg(svgEl: SVGSVGElement | null, segments: { count: number; color: string }[]) {
+      if (!svgEl) return;
+      const C = 238.76;
+      const total = segments.reduce((sum, s) => sum + s.count, 0);
+      if (total <= 0) {
+        svgEl.innerHTML = `<circle cx="50" cy="50" r="38" fill="none" stroke="#e2e8f0" stroke-width="12"></circle>`;
+        return;
+      }
+      let offset = 0;
+      let html = `<circle cx="50" cy="50" r="38" fill="none" stroke="#f1f5f9" stroke-width="12"></circle>`;
+      segments.forEach((seg) => {
+        if (seg.count <= 0) return;
+        const arc = (seg.count / total) * C;
+        html += `<circle cx="50" cy="50" r="38" fill="none" stroke="${seg.color}" stroke-width="12" stroke-dasharray="${arc.toFixed(2)} ${C}" stroke-dashoffset="${(-offset).toFixed(2)}" stroke-linecap="round"></circle>`;
+        offset += arc;
+      });
+      svgEl.innerHTML = html;
+    }
+
+    async function updateDashboardMetrics() {
+      try {
+        const [studentsRes, logsRes, permsRes] = await Promise.all([
+          fetch('/api/students'),
+          fetch('/api/attendance'),
+          fetch('/api/permissions'),
+        ]);
+        const students = await studentsRes.json();
+        const logs = await logsRes.json();
+        const permissions = await permsRes.json();
+
+        // Filter khusus siswa (abaikan guru & admin)
+        const cleanUid = (uid: string) => (uid || '').trim().toUpperCase();
+        const studentList = students.filter((s: any) => s.role === 'siswa');
+        const totalStudents = studentList.length;
+
+        const studentUidMap = new Map();
+        const studentIdMap = new Map();
+        studentList.forEach((s: any) => {
+          if (s.rfidUid) studentUidMap.set(cleanUid(s.rfidUid), s);
+          if (s.id) studentIdMap.set(s.id, s);
+        });
+
+        // Log presensi masuk siswa hari ini
+        const siswaMasukLogs = logs.filter((l: any) => {
+          const u = cleanUid(l.rfidUid);
+          return l.type === 'masuk' && ((u && studentUidMap.has(u)) || l.role === 'siswa');
+        });
+
+        // Izin sah siswa hari ini
+        const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
+        const todaySiswaPerms = permissions.filter((p: any) => {
+          const isToday = todayStr >= p.startDate && todayStr <= (p.endDate || p.startDate);
+          const isSiswa = studentIdMap.has(p.studentId) || !p.studentId?.startsWith('GUR');
+          return isToday && isSiswa;
+        });
+        const approvedSiswaPerms = todaySiswaPerms.filter((p: any) => p.status === 'Disetujui');
+        const sakitPermStudentIds = new Set(
+          approvedSiswaPerms.filter((p: any) => p.category === 'sakit').map((p: any) => p.studentId)
+        );
+        const izinDispPermStudentIds = new Set(
+          approvedSiswaPerms.filter((p: any) => p.category === 'keluarga' || p.category === 'izin' || p.category === 'dispensasi').map((p: any) => p.studentId)
+        );
+
+        // Kategorisasi siswa hari ini
+        const hadirSet = new Set<string>();
+        const terlambatSet = new Set<string>();
+        const izinLogSet = new Set<string>();
+        const sakitLogSet = new Set<string>();
+
+        siswaMasukLogs.forEach((l: any) => {
+          const u = cleanUid(l.rfidUid);
+          if (l.status === 'Hadir') hadirSet.add(u);
+          else if (l.status === 'Terlambat') terlambatSet.add(u);
+          else if (l.status === 'Sakit') sakitLogSet.add(u);
+          else if (l.status === 'Izin' || l.status === 'Dispensasi') izinLogSet.add(u);
+        });
+
+        let hadirCount = 0;
+        let terlambatCount = 0;
+        let totalIzinDisp = 0;
+        let totalSakit = 0;
+        let alpaCount = 0;
+
+        const rplStudents = studentList.filter((s: any) => (s.category && s.category.toLowerCase().includes('rpl')) || (s.className && s.className.toUpperCase().includes('RPL')));
+        const aklStudents = studentList.filter((s: any) => (s.category && s.category.toLowerCase().includes('akl')) || (s.className && s.className.toUpperCase().includes('AKL')));
+
+        let rplHadir = 0;
+        let aklHadir = 0;
+
+        studentList.forEach((s: any) => {
+          const u = cleanUid(s.rfidUid);
+          const isRpl = (s.category && s.category.toLowerCase().includes('rpl')) || (s.className && s.className.toUpperCase().includes('RPL'));
+
+          if (hadirSet.has(u)) {
+            hadirCount++;
+            if (isRpl) rplHadir++; else aklHadir++;
+          } else if (terlambatSet.has(u)) {
+            terlambatCount++;
+            if (isRpl) rplHadir++; else aklHadir++;
+          } else if (izinDispPermStudentIds.has(s.id) || izinLogSet.has(u)) {
+            totalIzinDisp++;
+          } else if (sakitPermStudentIds.has(s.id) || sakitLogSet.has(u)) {
+            totalSakit++;
+          } else {
+            alpaCount++;
+          }
+        });
+
+        const totalHadir = hadirCount + terlambatCount;
+        const belumCount = totalStudents - totalHadir; // Belum hadir di gerbang
+
+        const topHadirPct = totalStudents > 0 ? ((hadirCount / totalStudents) * 100).toFixed(0) : '0';
+        const topTerlambatPct = totalStudents > 0 ? ((terlambatCount / totalStudents) * 100).toFixed(0) : '0';
+        const topBelumPct = totalStudents > 0 ? ((belumCount / totalStudents) * 100).toFixed(0) : '100';
+
+        // Update Kartu Metrik Ringkas Atas
+        const elHadirPct = document.getElementById('metric-hadir-pct');
+        const elHadirCount = document.getElementById('metric-hadir-count');
+        const elTerlambatPct = document.getElementById('metric-terlambat-pct');
+        const elTerlambatCount = document.getElementById('metric-terlambat-count');
+        const elBelumPct = document.getElementById('metric-belum-pct');
+        const elBelumCount = document.getElementById('metric-belum-count');
+
+        if (elHadirPct) elHadirPct.textContent = `${topHadirPct}%`;
+        if (elHadirCount) elHadirCount.textContent = `${hadirCount} / ${totalStudents} Siswa`;
+        if (elTerlambatPct) elTerlambatPct.textContent = `${topTerlambatPct}%`;
+        if (elTerlambatCount) elTerlambatCount.textContent = `${terlambatCount} / ${totalStudents} Siswa`;
+        if (elBelumPct) elBelumPct.textContent = `${topBelumPct}%`;
+        if (elBelumCount) elBelumCount.textContent = `${belumCount} / ${totalStudents} Siswa`;
+
+        // Update Live Feed List
+        const feedContainer = document.getElementById('live-feed-container');
+        if (feedContainer) {
+          if (!logs.length) {
+            feedContainer.innerHTML = `
+              <div id="live-feed-empty" class="text-center py-4 text-xs text-slate-400 font-medium">
+                Belum ada aktivitas presensi hari ini.
+              </div>
+            `;
+          } else {
+            const authRole = localStorage.getItem('auth_role');
+            const isAdminUser = authRole === 'admin';
+
+            feedContainer.innerHTML = logs.slice(0, 5).map((log: any) => {
+              const isLate = log.status === 'Terlambat';
+              const isPulang = log.status === 'Pulang';
+              const badgeClass = isPulang
+                ? 'bg-blue-100 text-blue-800 border-blue-300'
+                : isLate
+                ? 'bg-amber-100 text-amber-900 border-amber-300'
+                : 'bg-emerald-100 text-emerald-900 border-emerald-300';
+              const showUid = isAdminUser && log.role !== 'admin' && Boolean(log.rfidUid);
+              const subInfo = showUid ? `${log.className} • UID: ${log.rfidUid}` : log.className;
+              return `
+                <div class="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-xs animate-toast">
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg ${isPulang ? 'bg-blue-600' : isLate ? 'bg-amber-500' : 'bg-emerald-600'} text-white font-black text-xs flex items-center justify-center shrink-0">
+                      ${log.name.split(' ').map((n: string) => n[0]).slice(0, 2).join('')}
+                    </div>
+                    <div>
+                      <p class="font-bold text-xs text-slate-800">${log.name}</p>
+                      <p class="text-[10px] text-slate-400 font-medium">${subInfo}</p>
+                    </div>
+                  </div>
+                  <div class="text-right flex items-center gap-2">
+                    <span class="inline-flex items-center gap-1 text-[10px] font-bold ${badgeClass} border px-2 py-0.5 rounded-full">
+                      ${log.status}
+                    </span>
+                    <span class="text-xs font-mono font-bold text-slate-600">${log.time.slice(0, 5)} WIB</span>
+                  </div>
+                </div>
+              `;
+            }).join('');
+          }
+        }
+
+        // ==========================================
+        // PERHITUNGAN AKURAT 4 DIAGRAM STATISTIK
+        // ==========================================
+        const sakitAlpaCount = totalSakit + alpaCount;
+
+        // DIAGRAM 1: Rasio Kehadiran Keseluruhan
+        const d1Sub = document.getElementById('d1-subtitle');
+        const d1Badge = document.getElementById('d1-badge');
+        const d1Svg = document.getElementById('d1-svg') as SVGSVGElement | null;
+        const d1Center = document.getElementById('d1-center-pct');
+        const d1Tepat = document.getElementById('d1-tepat-waktu');
+        const d1Terlambat = document.getElementById('d1-terlambat');
+        const d1Izin = document.getElementById('d1-izin');
+        const d1SakitAlpa = document.getElementById('d1-sakit-alpa');
+        const d1Status = document.getElementById('d1-footer-status');
+
+        const tepatPct = totalStudents > 0 ? ((hadirCount / totalStudents) * 100).toFixed(1) : '0.0';
+        const terlambatPct = totalStudents > 0 ? ((terlambatCount / totalStudents) * 100).toFixed(1) : '0.0';
+        const izinPct = totalStudents > 0 ? ((totalIzinDisp / totalStudents) * 100).toFixed(1) : '0.0';
+        const sakitAlpaPct = totalStudents > 0 ? ((sakitAlpaCount / totalStudents) * 100).toFixed(1) : '0.0';
+        const kehadiranPct = totalStudents > 0 ? ((totalHadir / totalStudents) * 100).toFixed(1) : '0.0';
+
+        if (d1Sub) d1Sub.textContent = 'Presensi siswa hari ini.';
+        if (d1Center) d1Center.textContent = `${kehadiranPct}%`;
+        if (d1Tepat) d1Tepat.textContent = `${hadirCount} (${tepatPct}%)`;
+        if (d1Terlambat) d1Terlambat.textContent = `${terlambatCount} (${terlambatPct}%)`;
+        if (d1Izin) d1Izin.textContent = `${totalIzinDisp} (${izinPct}%)`;
+        if (d1SakitAlpa) d1SakitAlpa.textContent = `${sakitAlpaCount} (${sakitAlpaPct}%)`;
+
+        if (d1Badge) {
+          const numKehadiran = parseFloat(kehadiranPct);
+          if (totalHadir === 0) {
+            d1Badge.className = 'text-[11px] font-bold text-slate-600 bg-slate-100 border border-slate-300 px-2 py-0.5 rounded-full';
+            d1Badge.textContent = '0 Scan';
+          } else if (numKehadiran >= 90) {
+            d1Badge.className = 'text-[11px] font-bold text-emerald-700 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-full';
+            d1Badge.textContent = 'Sangat Baik';
+          } else if (numKehadiran >= 75) {
+            d1Badge.className = 'text-[11px] font-bold text-blue-700 bg-blue-100 border border-blue-300 px-2 py-0.5 rounded-full';
+            d1Badge.textContent = 'Baik';
+          } else {
+            d1Badge.className = 'text-[11px] font-bold text-amber-700 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full';
+            d1Badge.textContent = 'Rendah';
+          }
+        }
+
+        if (d1Status) {
+          const numKehadiran = parseFloat(kehadiranPct);
+          const diff = (numKehadiran - 90).toFixed(1);
+          if (totalHadir === 0) {
+            d1Status.textContent = 'Menunggu data';
+            d1Status.className = 'text-slate-400 font-semibold';
+          } else if (numKehadiran >= 90) {
+            d1Status.textContent = `Tercapai (+${diff}%)`;
+            d1Status.className = 'text-blue-600 font-semibold';
+          } else {
+            d1Status.textContent = `Kurang (${diff}%)`;
+            d1Status.className = 'text-amber-600 font-semibold';
+          }
+        }
+
+        renderDonutSvg(d1Svg, [
+          { count: hadirCount, color: '#2563eb' },
+          { count: terlambatCount, color: '#06b6d4' },
+          { count: totalIzinDisp, color: '#f59e0b' },
+          { count: sakitAlpaCount, color: '#ef4444' },
+        ]);
+
+        // DIAGRAM 2: Distribusi Kehadiran per Jurusan (HANYA 2 JURUSAN: RPL & AKL)
+        const rplPct = rplStudents.length > 0 ? ((rplHadir / rplStudents.length) * 100).toFixed(1) : '0.0';
+        const aklPct = aklStudents.length > 0 ? ((aklHadir / aklStudents.length) * 100).toFixed(1) : '0.0';
+        const avgJurusan = (((parseFloat(rplPct) + parseFloat(aklPct)) / 2)).toFixed(1);
+
+        const d2Svg = document.getElementById('d2-svg') as SVGSVGElement | null;
+        const d2Center = document.getElementById('d2-center-pct');
+        const d2Rpl = document.getElementById('d2-rpl-val');
+        const d2Akl = document.getElementById('d2-akl-val');
+        const d2Best = document.getElementById('d2-best-jurusan');
+        const d2Status = document.getElementById('d2-footer-status');
+
+        if (d2Center) d2Center.textContent = `${avgJurusan}%`;
+        if (d2Rpl) d2Rpl.textContent = `${rplPct}% (${rplHadir}/${rplStudents.length})`;
+        if (d2Akl) d2Akl.textContent = `${aklPct}% (${aklHadir}/${aklStudents.length})`;
+
+        if (d2Best) {
+          if (totalHadir === 0) d2Best.textContent = '-';
+          else if (parseFloat(rplPct) > parseFloat(aklPct)) d2Best.textContent = 'RPL';
+          else if (parseFloat(aklPct) > parseFloat(rplPct)) d2Best.textContent = 'AKL';
+          else d2Best.textContent = 'RPL & AKL';
+        }
+        if (d2Status) {
+          if (totalHadir === 0) {
+            d2Status.textContent = 'Belum ada scan';
+            d2Status.className = 'text-slate-400 font-semibold';
+          } else if (parseFloat(rplPct) === 100 && parseFloat(aklPct) === 100) {
+            d2Status.textContent = 'Hadir Semua';
+            d2Status.className = 'text-emerald-600 font-semibold';
+          } else {
+            d2Status.textContent = `${totalHadir}/${totalStudents} Hadir`;
+            d2Status.className = 'text-slate-600 font-semibold';
+          }
+        }
+
+        renderDonutSvg(d2Svg, [
+          { count: rplHadir, color: '#3b82f6' },
+          { count: aklHadir, color: '#a855f7' },
+        ]);
+
+        // DIAGRAM 3: Analisis Ketidakhadiran & Alasan
+        const dispPerms = approvedSiswaPerms.filter((p: any) => p.category === 'dispensasi');
+        const keluargaPerms = approvedSiswaPerms.filter((p: any) => p.category === 'keluarga' || p.category === 'izin');
+        const totalBerkas = todaySiswaPerms.length;
+        const totalKasus = totalBerkas + alpaCount;
+        const izinSahCount = approvedSiswaPerms.length;
+        const izinSahPct = totalKasus > 0 ? Math.round((izinSahCount / totalKasus) * 100) : 100;
+
+        const sakitCasePct = totalKasus > 0 ? Math.round((totalSakit / totalKasus) * 100) : 0;
+        const dispCasePct = totalKasus > 0 ? Math.round((dispPerms.length / totalKasus) * 100) : 0;
+        const keluargaCasePct = totalKasus > 0 ? Math.round((keluargaPerms.length / totalKasus) * 100) : 0;
+        const alpaCasePct = totalKasus > 0 ? Math.round((alpaCount / totalKasus) * 100) : 0;
+
+        const d3Sub = document.getElementById('d3-subtitle');
+        const d3Badge = document.getElementById('d3-badge');
+        const d3Svg = document.getElementById('d3-svg') as SVGSVGElement | null;
+        const d3Center = document.getElementById('d3-center-pct');
+        const d3Sakit = document.getElementById('d3-sakit');
+        const d3Disp = document.getElementById('d3-dispensasi');
+        const d3Keluarga = document.getElementById('d3-keluarga');
+        const d3Alpa = document.getElementById('d3-alpa');
+        const d3VerifCount = document.getElementById('d3-verifikasi-count');
+        const d3Pending = document.getElementById('d3-footer-pending');
+
+        if (d3Sub) d3Sub.textContent = 'Rincian perizinan siswa.';
+        if (d3Badge) d3Badge.textContent = `${totalBerkas} Berkas`;
+        if (d3Center) d3Center.textContent = `${izinSahPct}%`;
+        if (d3Sakit) d3Sakit.textContent = `${totalSakit} (${sakitCasePct}%)`;
+        if (d3Disp) d3Disp.textContent = `${dispPerms.length} (${dispCasePct}%)`;
+        if (d3Keluarga) d3Keluarga.textContent = `${keluargaPerms.length} (${keluargaCasePct}%)`;
+        if (d3Alpa) d3Alpa.textContent = `${alpaCount} (${alpaCasePct}%)`;
+
+        const disetujuiCount = approvedSiswaPerms.length;
+        const pendingCount = todaySiswaPerms.filter((p: any) => p.status === 'Menunggu' || p.status === 'Pending').length;
+        if (d3VerifCount) d3VerifCount.textContent = `${disetujuiCount}/${totalBerkas}`;
+        if (d3Pending) d3Pending.textContent = `${pendingCount} Perlu Dicek`;
+
+        renderDonutSvg(d3Svg, [
+          { count: totalSakit, color: '#10b981' },
+          { count: dispPerms.length, color: '#3b82f6' },
+          { count: keluargaPerms.length, color: '#f59e0b' },
+          { count: alpaCount, color: '#ef4444' },
+        ]);
+
+        // DIAGRAM 4: Disiplin Jam Kedatangan (Hanya evaluasi tap fisik gerbang: Hadir & Terlambat)
+        const d4Badge = document.getElementById('d4-badge');
+        const d4Svg = document.getElementById('d4-svg') as SVGSVGElement | null;
+        const d4Center = document.getElementById('d4-center-pct');
+        const d4Awal = document.getElementById('d4-awal');
+        const d4Standar = document.getElementById('d4-standar');
+        const d4Lewat = document.getElementById('d4-lewat');
+        const d4Puncak = document.getElementById('d4-puncak-range');
+        const d4Rata = document.getElementById('d4-footer-rata');
+
+        const gateTapLogs = siswaMasukLogs.filter((l: any) => l.status === 'Hadir' || l.status === 'Terlambat');
+        const totalScan = gateTapLogs.length;
+        let awalCount = 0;
+        let standarCount = 0;
+        let lewatCount = 0;
+
+        gateTapLogs.forEach((l: any) => {
+          const [h, m] = (l.time || '00:00').split(':').map(Number);
+          const totalM = (h || 0) * 60 + (m || 0);
+          if (totalM < 7 * 60) {
+            awalCount++;
+          } else if (totalM <= 7 * 60 + 15) {
+            standarCount++;
+          } else {
+            lewatCount++;
+          }
+        });
+        const tepatCount = awalCount + standarCount;
+
+        const awalPct = totalScan > 0 ? ((awalCount / totalScan) * 100).toFixed(1) : '0.0';
+        const standarPct = totalScan > 0 ? ((standarCount / totalScan) * 100).toFixed(1) : '0.0';
+        const lewatPct = totalScan > 0 ? ((lewatCount / totalScan) * 100).toFixed(1) : '0.0';
+        const tepatWaktuPct = totalScan > 0 ? ((tepatCount / totalScan) * 100).toFixed(1) : '0.0';
+
+        if (d4Center) d4Center.textContent = `${tepatWaktuPct}%`;
+        if (d4Awal) d4Awal.textContent = `${awalCount} (${awalPct}%)`;
+        if (d4Standar) d4Standar.textContent = `${standarCount} (${standarPct}%)`;
+        if (d4Lewat) d4Lewat.textContent = `${lewatCount} (${lewatPct}%)`;
+
+        if (d4Badge) {
+          const numTepat = parseFloat(tepatWaktuPct);
+          if (totalScan === 0) {
+            d4Badge.textContent = 'Menunggu';
+            d4Badge.className = 'text-[11px] font-bold text-slate-600 bg-slate-100 border border-slate-300 px-2 py-0.5 rounded-full';
+          } else if (numTepat >= 95) {
+            d4Badge.textContent = 'Grade A+';
+            d4Badge.className = 'text-[11px] font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-full';
+          } else if (numTepat >= 85) {
+            d4Badge.textContent = 'Grade A';
+            d4Badge.className = 'text-[11px] font-bold text-blue-800 bg-blue-100 border border-blue-300 px-2 py-0.5 rounded-full';
+          } else if (numTepat >= 75) {
+            d4Badge.textContent = 'Grade B';
+            d4Badge.className = 'text-[11px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full';
+          } else {
+            d4Badge.textContent = 'Grade C';
+            d4Badge.className = 'text-[11px] font-bold text-rose-800 bg-rose-100 border border-rose-300 px-2 py-0.5 rounded-full';
+          }
+        }
+
+        if (d4Puncak) {
+          if (totalScan === 0) {
+            d4Puncak.textContent = '-';
+          } else if (awalCount >= standarCount && awalCount >= lewatCount) {
+            d4Puncak.textContent = '< 07:00';
+          } else if (standarCount >= awalCount && standarCount >= lewatCount) {
+            d4Puncak.textContent = '07:00 - 07:15';
+          } else {
+            d4Puncak.textContent = '> 07:15';
+          }
+        }
+
+        if (d4Rata) {
+          if (totalScan === 0) {
+            d4Rata.textContent = 'Rata-rata: -';
+          } else {
+            const totalMinutes = gateTapLogs.reduce((acc: number, l: any) => {
+              const [h, m] = l.time.split(':').map(Number);
+              return acc + (h * 60 + (m || 0));
+            }, 0);
+            const avgMin = Math.round(totalMinutes / totalScan);
+            const avgH = String(Math.floor(avgMin / 60)).padStart(2, '0');
+            const avgM = String(avgMin % 60).padStart(2, '0');
+            d4Rata.textContent = `Rata-rata ${avgH}:${avgM}`;
+          }
+        }
+
+        renderDonutSvg(d4Svg, [
+          { count: awalCount, color: '#10b981' },
+          { count: standarCount, color: '#3b82f6' },
+          { count: lewatCount, color: '#f59e0b' },
+        ]);
+      } catch (err) {
+        console.error('Error updating dashboard metrics:', err);
+      }
+    }
+
+    // Dengarkan event push SSE realtime
+    window.addEventListener('attendance-updated', updateDashboardMetrics);
+    updateDashboardMetrics();
+  </script>
+</Layout>

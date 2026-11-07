@@ -1,0 +1,193 @@
+---
+/**
+ * @file src/components/Navbar.astro
+ * @description Komponen Navbar Atas untuk SI-HADIR SMK
+ * Dilengkapi jam digital WIB real-time, status hitung mundur reset, dan aksesibilitas focus ring.
+ */
+interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+---
+
+<!-- ================================================================================================================================
+komponen penting buat nampilin icon
+================================================================================================================================ -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+  rel="stylesheet"
+/>
+<!-- =============================================================================================================================================== -->
+
+<header
+  class="h-16 px-5 sm:px-8 border-b border-slate-200/90 bg-white/80 backdrop-blur-md flex items-center justify-between shrink-0 sticky top-0 z-30 transition-all duration-200"
+>
+  <!-- Left: Breadcrumb / Title -->
+  <nav
+    class="flex items-center gap-2.5 text-xs font-medium text-slate-500"
+    aria-label="Breadcrumb"
+  >
+    <a id="navbar-breadcrumb-link" href="/" class="hover:text-blue-600 transition-colors duration-200"
+      >Dashboard</a
+    >
+    <span class="text-slate-300" aria-hidden="true">/</span>
+    <h2 class="text-xs sm:text-sm font-bold text-slate-900 tracking-tight">
+      {title}
+    </h2>
+  </nav>
+
+  <!-- Right: Live Clock, Status, Notification, Calendar -->
+  <div class="flex items-center gap-2.5 sm:gap-4">
+    <!-- Live WIB Clock Widget with countdown to reset -->
+    <div
+      class="hidden sm:flex items-center gap-2 px-3.5 py-1.5 bg-slate-100/90 border border-slate-200 text-slate-700 text-xs font-mono font-medium shadow-xs"
+    >
+    <span class="material-symbols-outlined text-[10px]">
+        Schedule 
+        </span>
+      <span class="tracking-wide font-bold text-slate-800" id="liveClockDisplay"
+        >12:00:00 WIB</span
+      >
+      <span
+        class="text-[10px] text-slate-500 border-l border-slate-300 pl-2 font-sans font-semibold"
+        id="resetCountdown"
+        title="Waktu otomatis reset harian sistem pukul 23:00"
+        >Reset dlm 11j 0m</span
+      >
+    </div>
+
+    <!-- Notification Bell with Pending Counter -->
+    <div class="relative">
+      <button
+        class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-1 active:scale-95"
+        title="Notifikasi Absen Tertunda"
+        aria-label="5 notifikasi absensi belum diverifikasi"
+      >
+        <span class="material-symbols-outlined text-[10px]"
+          >Notifications_Active
+        </span>
+      </button>
+      <span
+        class="absolute -top-1 -right-1 bg-rose-600 text-white text-[10px] font-extrabold w-4 h-4 rounded-full flex items-center justify-center ring-2 ring-white shadow-xs"
+        >5</span
+      >
+    </div>
+
+    <!-- Calendar Pill Button -->
+    <div class="relative pl-1 sm:pl-2 sm:border-l border-slate-200">
+      <div
+        class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200/80 border border-slate-200 text-slate-700 shadow-xs select-none transition-all duration-200"
+      >
+        <div
+          class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center shrink-0"
+        >
+          <span class="material-symbols-outlined text-[10px]"
+            >Calendar_Month
+          </span>
+        </div>
+        <div class="hidden sm:flex flex-col text-left leading-none">
+          <span id="navbar-date-display" class="text-[11px] font-bold text-slate-800">
+            Jumat, 30 Okt 2026
+          </span>
+          <span class="text-[9px] text-slate-500 font-medium mt-0.5">Minggu Efektif KBM</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Login Portal Civitas / Green Logout Button -->
+    <div class="relative pl-1 sm:pl-2 sm:border-l border-slate-200 flex items-center gap-1.5" id="navbar-auth-container">
+      <a
+        id="navbar-login-btn"
+        href="/login"
+        class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-all duration-200 active:scale-95"
+      >
+        <span class="material-symbols-outlined text-sm">login</span>
+        <span id="navbar-login-text">Login Portal</span>
+      </a>
+
+      <!-- Tombol Logout Warna Hijau di Navbar Sebelah Kanan -->
+      <button
+        id="navbar-logout-btn"
+        type="button"
+        class="hidden items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-all cursor-pointer active:scale-95"
+        title="Klik untuk Logout / Keluar"
+      >
+        <span class="material-symbols-outlined text-sm">logout</span>
+        <span id="navbar-logout-text">Logout</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<script>
+    function updateNavbarDate() {
+      const el = document.getElementById('navbar-date-display');
+      if (!el) return;
+      const now = new Date();
+      const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+      el.textContent = `${days[now.getDay()]}, ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+    }
+    updateNavbarDate();
+
+    // Check logged in civitas in Navbar & activate Green Logout button
+    try {
+      const authRaw = localStorage.getItem('auth_civitas');
+      const authRole = localStorage.getItem('auth_role');
+      const loginBtn = document.getElementById('navbar-login-btn');
+      const logoutBtn = document.getElementById('navbar-logout-btn');
+      const logoutText = document.getElementById('navbar-logout-text');
+
+      if (authRaw || authRole) {
+        let civ = { name: 'Admin', role: 'admin' };
+        try { if (authRaw) civ = JSON.parse(authRaw); } catch {}
+
+        // Sembunyikan tombol login, tampilkan tombol Logout hijau di sebelah kanan
+        if (loginBtn) loginBtn.classList.add('hidden');
+
+        if (logoutBtn) {
+          logoutBtn.classList.remove('hidden');
+          logoutBtn.classList.add('flex');
+          if (logoutText) {
+            logoutText.textContent = `Logout`;
+          }
+          logoutBtn.title = `Klik untuk Logout (${civ.name || 'User'})`;
+          logoutBtn.onclick = () => {
+            localStorage.removeItem('auth_civitas');
+            localStorage.removeItem('auth_role');
+            sessionStorage.removeItem('auth_active');
+            sessionStorage.removeItem('bypass_login');
+            document.cookie = 'auth_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
+            window.location.replace('/login');
+          };
+        }
+
+        if (civ.role === 'siswa') {
+          const breadcrumbLink = document.getElementById('navbar-breadcrumb-link');
+          if (breadcrumbLink) {
+            breadcrumbLink.removeAttribute('href');
+            breadcrumbLink.textContent = 'Portal Siswa';
+            breadcrumbLink.className = 'text-slate-400 font-semibold cursor-default';
+          }
+        }
+
+        if (civ.role === 'guru' || authRole === 'guru') {
+          const breadcrumbLink = document.getElementById('navbar-breadcrumb-link');
+          if (breadcrumbLink) {
+            breadcrumbLink.removeAttribute('href');
+            breadcrumbLink.textContent = 'Portal Guru';
+            breadcrumbLink.className = 'text-slate-400 font-semibold cursor-default';
+          }
+        }
+      } else {
+        if (loginBtn) loginBtn.classList.remove('hidden');
+        if (logoutBtn) {
+          logoutBtn.classList.add('hidden');
+          logoutBtn.classList.remove('flex');
+        }
+      }
+    } catch {}
+  </script>

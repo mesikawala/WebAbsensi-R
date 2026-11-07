@@ -1,0 +1,2776 @@
+---
+/**
+ * @file src/pages/rekapitulasi.astro
+ * @description Halaman Rekapitulasi Presensi & Ekspor Laporan PDF Standar Dinas
+ * Didesain ulang dengan tata letak modular menggunakan Sidebar Khusus (seperti profil civitas)
+ * agar setiap fitur (Statistik, Dokumen Sah PDF, Riwayat Log Turso, dan Otomatisasi) terorganisir rapi tanpa sesak.
+ */
+export const prerender = false;
+
+const authSession = Astro.cookies.get('auth_session')?.value;
+if (!authSession) {
+  return Astro.redirect('/login');
+}
+if (authSession === 'siswa') {
+  return Astro.redirect('/profil-siswa');
+}
+
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Rekapitulasi & PDF" activeNav="rekap">
+
+  <!-- ========================================================
+       1. SIDEBAR KHUSUS REKAPITULASI & EKSPOR LAPORAN
+       (Menggantikan Sidebar Utama via slot="sidebar")
+       ======================================================== -->
+  <aside
+    slot="sidebar"
+    class="w-full md:w-64 lg:w-72 bg-gradient-to-b from-[#1e3a8a] via-[#1d4ed8] to-[#1e40af] text-blue-100 flex flex-col justify-between shrink-0 select-none shadow-xl border-r border-blue-900/40 overflow-y-auto h-auto min-h-[920px] p-5 space-y-6"
+    aria-label="Sidebar Khusus Rekapitulasi & Laporan"
+  >
+    <div class="space-y-6">
+      <!-- Tombol Kembali ke Dashboard Utama -->
+      <div class="pb-3 border-b border-white/15">
+        <a
+          href="/"
+          class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition duration-200 hover:scale-[1.02] active:scale-[0.98] w-full border border-white/15 shadow-sm"
+          title="Kembali ke Dashboard Utama"
+        >
+          <span class="material-symbols-outlined text-base">arrow_back</span>
+          <span>Kembali ke Menu Utama</span>
+        </a>
+      </div>
+
+      <!-- Header Info Modul Rekapitulasi di Sidebar -->
+      <div class="p-3.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 space-y-2.5">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white shadow-md">
+            <span class="material-symbols-outlined text-2xl">description</span>
+          </div>
+          <div class="min-w-0 flex-1">
+            <h3 class="font-black text-sm text-white truncate">Rekap Presensi</h3>
+            <p class="text-[11px] font-semibold text-blue-200 truncate">SMK Ma'arif Padang Ratu</p>
+          </div>
+        </div>
+
+        <div class="pt-2 border-t border-white/10 space-y-1 text-[11px]">
+          <div class="flex items-center justify-between">
+            <span class="text-blue-200">Database:</span>
+            <span class="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 font-bold">Online</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-blue-200">Reset Harian:</span>
+            <span class="px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 font-bold">23:00 WIB</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Navigasi Menu Modular Rekapitulasi -->
+      <nav class="space-y-1.5" id="rekap-subnav" aria-label="Navigasi Menu Rekapitulasi">
+        <!-- 1. Statistik Kehadiran -->
+        <button
+          type="button"
+          data-target="sec-statistik"
+          data-title="Statistik Kehadiran"
+          data-desc="Data presensi hari ini tersinkronisasi otomatis dengan sensor RFID gerbang."
+          class="rekap-nav-btn active w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition duration-200 text-left cursor-pointer bg-white text-blue-900 shadow-lg shadow-blue-950/25 border-l-4 border-indigo-700 translate-x-1"
+        >
+          <span class="flex items-center gap-3">
+            <span class="material-symbols-outlined text-lg">query_stats</span>
+            <span>Statistik</span>
+          </span>
+          <span class="material-symbols-outlined text-sm opacity-80">chevron_right</span>
+        </button>
+
+        <!-- 2. Dokumen Sah & Cetak PDF -->
+        <button
+          type="button"
+          data-target="sec-dokumen"
+          data-title="Dokumen & Cetak PDF"
+          data-desc="Laporan berita acara presensi resmi, siap dicetak ke format PDF."
+          class="rekap-nav-btn w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-semibold transition duration-200 text-left cursor-pointer text-blue-100/80 hover:text-white hover:bg-white/15 hover:translate-x-0.5"
+        >
+          <span class="flex items-center gap-3">
+            <span class="material-symbols-outlined text-lg">picture_as_pdf</span>
+            <span>Dokumen & PDF</span>
+          </span>
+          <span class="material-symbols-outlined text-sm opacity-60">chevron_right</span>
+        </button>
+
+        <!-- 3. Riwayat Presensi & Arsip Log -->
+        <button
+          type="button"
+          data-target="sec-riwayat"
+          data-title="Riwayat Presensi & Log"
+          data-desc="Catatan presensi realtime dan arsip historis dari database cloud."
+          class="rekap-nav-btn w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-semibold transition duration-200 text-left cursor-pointer text-blue-100/80 hover:text-white hover:bg-white/15 hover:translate-x-0.5"
+        >
+          <span class="flex items-center gap-3">
+            <span class="material-symbols-outlined text-lg">table_chart</span>
+            <span>Riwayat & Log</span>
+          </span>
+          <span class="material-symbols-outlined text-sm opacity-60">chevron_right</span>
+        </button>
+
+        <!-- 4. Otomatisasi & Kontrol Operasional -->
+        <button
+          type="button"
+          data-target="sec-otomatisasi"
+          data-title="Pusat Otomatisasi"
+          data-desc="Kontrol evaluasi bolos kepulangan (-10 poin) dan jadwal arsip harian 23:00 WIB."
+          class="rekap-nav-btn w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-semibold transition duration-200 text-left cursor-pointer text-blue-100/80 hover:text-white hover:bg-white/15 hover:translate-x-0.5"
+        >
+          <span class="flex items-center gap-3">
+            <span class="material-symbols-outlined text-lg">tune</span>
+            <span>Otomatisasi</span>
+          </span>
+          <span class="material-symbols-outlined text-sm opacity-60">chevron_right</span>
+        </button>
+      </nav>
+    </div>
+
+    <!-- Quick Footer Actions di Sidebar -->
+    <div class="pt-4 border-t border-white/15 space-y-2">
+      <button
+        type="button"
+        id="sidebar-btn-wa"
+        class="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-emerald-600/80 hover:bg-emerald-600 text-white font-bold text-xs transition duration-200 shadow-sm cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+        title="Salin ringkasan presensi untuk dikirim ke grup WhatsApp"
+      >
+        <span class="material-symbols-outlined text-base">chat</span>
+        <span>Salin Ringkasan WA</span>
+      </button>
+      <button
+        type="button"
+        id="sidebar-btn-excel"
+        class="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition duration-200 border border-white/15 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+        title="Unduh seluruh data log terfilter dalam format Excel (CSV)"
+      >
+        <span class="material-symbols-outlined text-base">table_view</span>
+        <span>Unduh Excel (CSV)</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ========================================================
+       2. TAMPILAN KONTEN UTAMA (MODULAR & RAPI)
+       ======================================================== -->
+  <div class="print:hidden flex flex-col gap-6 max-w-7xl mx-auto w-full">
+    
+    <!-- Top Action Bar & Header Ramping (Ultra Clean & Professional) -->
+    <div class="p-5 sm:p-6 bg-white/90 backdrop-blur-xl rounded-3xl shadow-xs border border-slate-200/80 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div>
+        <div class="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-blue-50 border border-blue-200/60 text-[11px] font-bold text-blue-700 mb-1.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse"></span>
+          <span>Laporan Presensi Resmi</span>
+        </div>
+        <h1 id="rekap-current-tab-title" class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+          Statistik Kehadiran Civitas
+        </h1>
+        <p id="rekap-current-tab-desc" class="text-xs text-slate-500 mt-0.5">
+          Ringkasan metrik presensi hari ini tersinkronisasi otomatis dengan sensor RFID & gerbang IoT.
+        </p>
+      </div>
+
+    </div>
+
+    <!-- ========================================================
+         SECTION 1: STATISTIK KEHADIRAN (BERSIH & LEGA)
+         ======================================================== -->
+    <section id="sec-statistik" class="rekap-section space-y-6">
+      <!-- 6 Metric Cards Solid Bergaya HeiMaUX (Sesuai Dashboard Utama) -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
+        <!-- Hadir Tepat (Solid Vivid Emerald) -->
+        <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white p-4 shadow-lg shadow-emerald-500/25 border border-emerald-400/30 flex flex-col justify-between transition-all duration-200 hover:-translate-y-0.5">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[10px] font-bold text-emerald-100 uppercase tracking-wider">Hadir Tepat</span>
+            <div class="w-7 h-7 rounded-lg bg-white/20 backdrop-blur-xs flex items-center justify-center text-white border border-white/25">
+              <span class="material-symbols-outlined text-[16px]">check_circle</span>
+            </div>
+          </div>
+          <p class="text-3xl font-black text-white tracking-tight" id="rekap-hadir">0</p>
+        </div>
+
+        <!-- Terlambat (Solid Amber / Orange) -->
+        <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-500 to-orange-500 text-white p-4 shadow-lg shadow-amber-500/25 border border-amber-400/30 flex flex-col justify-between transition-all duration-200 hover:-translate-y-0.5">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[10px] font-bold text-amber-100 uppercase tracking-wider">Terlambat</span>
+            <div class="w-7 h-7 rounded-lg bg-white/20 backdrop-blur-xs flex items-center justify-center text-white border border-white/25">
+              <span class="material-symbols-outlined text-[16px]">schedule</span>
+            </div>
+          </div>
+          <p class="text-3xl font-black text-white tracking-tight" id="rekap-terlambat">0</p>
+        </div>
+
+        <!-- Bolos (-10P) (Solid Rose / Red) -->
+        <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-rose-500 to-red-600 text-white p-4 shadow-lg shadow-rose-500/25 border border-rose-400/30 flex flex-col justify-between transition-all duration-200 hover:-translate-y-0.5">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[10px] font-bold text-rose-100 uppercase tracking-wider">Bolos (-10P)</span>
+            <div class="w-7 h-7 rounded-lg bg-white/20 backdrop-blur-xs flex items-center justify-center text-white border border-white/25">
+              <span class="material-symbols-outlined text-[16px]">dangerous</span>
+            </div>
+          </div>
+          <p class="text-3xl font-black text-white tracking-tight" id="rekap-bolos">0</p>
+        </div>
+
+        <!-- Izin / Disp (Solid Indigo / Violet) -->
+        <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white p-4 shadow-lg shadow-indigo-500/25 border border-indigo-400/30 flex flex-col justify-between transition-all duration-200 hover:-translate-y-0.5">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[10px] font-bold text-indigo-100 uppercase tracking-wider">Izin / Disp</span>
+            <div class="w-7 h-7 rounded-lg bg-white/20 backdrop-blur-xs flex items-center justify-center text-white border border-white/25">
+              <span class="material-symbols-outlined text-[16px]">assignment_turned_in</span>
+            </div>
+          </div>
+          <p class="text-3xl font-black text-white tracking-tight" id="rekap-izin">0</p>
+        </div>
+
+        <!-- Sudah Pulang (Solid Vivid Blue) -->
+        <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#2f69ff] to-[#4581ff] text-white p-4 card-glow-blue border border-blue-400/30 flex flex-col justify-between transition-all duration-200 hover:-translate-y-0.5">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[10px] font-bold text-blue-100 uppercase tracking-wider">Sudah Pulang</span>
+            <div class="w-7 h-7 rounded-lg bg-white/20 backdrop-blur-xs flex items-center justify-center text-white border border-white/25">
+              <span class="material-symbols-outlined text-[16px]">logout</span>
+            </div>
+          </div>
+          <p class="text-3xl font-black text-white tracking-tight" id="rekap-pulang">0</p>
+        </div>
+
+        <!-- Belum Absen (Solid Slate) -->
+        <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#64748b] to-[#475569] text-white p-4 shadow-lg shadow-slate-700/25 border border-slate-500/30 flex flex-col justify-between transition-all duration-200 hover:-translate-y-0.5">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[10px] font-bold text-slate-200 uppercase tracking-wider">Belum Absen</span>
+            <div class="w-7 h-7 rounded-lg bg-white/20 backdrop-blur-xs flex items-center justify-center text-white border border-white/25">
+              <span class="material-symbols-outlined text-[16px]">person_off</span>
+            </div>
+          </div>
+          <p class="text-3xl font-black text-white tracking-tight" id="rekap-belum">0</p>
+        </div>
+      </div>
+
+      <!-- 2 Kolom Interaktif: Perbandingan Kehadiran per Jurusan & Feed 5 Tap Kartu Terbaru -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <!-- Kolom Kiri (7 Cols): Perbandingan Kehadiran per Jurusan & Guru -->
+        <div class="lg:col-span-7 p-5 rounded-3xl bg-white border border-slate-200/80 shadow-xs flex flex-col justify-between space-y-4">
+          <div>
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div class="flex items-center gap-2">
+                <span class="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <span class="material-symbols-outlined text-[18px]">bar_chart</span>
+                </span>
+                <div>
+                  <h3 class="font-bold text-slate-900 text-sm">Kehadiran per Jurusan & Guru</h3>
+                  <p class="text-[11px] text-slate-400">Rasio kehadiran aktif hari ini berdasarkan kompetensi keahlian.</p>
+                </div>
+              </div>
+              <span class="text-[10px] font-bold text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full">Target 90%</span>
+            </div>
+
+            <!-- 3 Bar Jurusan -->
+            <div class="space-y-3.5 pt-3">
+              <!-- AKL -->
+              <div class="space-y-1.5">
+                <div class="flex items-center justify-between text-xs">
+                  <span class="font-bold text-slate-700 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-blue-600"></span>
+                    <span>Siswa AKL (Akuntansi)</span>
+                  </span>
+                  <div class="flex items-center gap-2">
+                    <span id="jurusan-akl-ratio" class="text-slate-400 text-[11px]">0/0 Siswa</span>
+                    <span id="jurusan-akl-pct" class="font-black text-blue-700 text-xs">0%</span>
+                  </div>
+                </div>
+                <div class="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div id="jurusan-akl-bar" class="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-500 w-0"></div>
+                </div>
+              </div>
+
+              <!-- RPL -->
+              <div class="space-y-1.5">
+                <div class="flex items-center justify-between text-xs">
+                  <span class="font-bold text-slate-700 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-indigo-600"></span>
+                    <span>Siswa RPL (Software)</span>
+                  </span>
+                  <div class="flex items-center gap-2">
+                    <span id="jurusan-rpl-ratio" class="text-slate-400 text-[11px]">0/0 Siswa</span>
+                    <span id="jurusan-rpl-pct" class="font-black text-indigo-700 text-xs">0%</span>
+                  </div>
+                </div>
+                <div class="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div id="jurusan-rpl-bar" class="h-full bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full transition-all duration-500 w-0"></div>
+                </div>
+              </div>
+
+              <!-- Guru -->
+              <div class="space-y-1.5">
+                <div class="flex items-center justify-between text-xs">
+                  <span class="font-bold text-slate-700 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                    <span>Dewan Guru & Staf</span>
+                  </span>
+                  <div class="flex items-center gap-2">
+                    <span id="jurusan-guru-ratio" class="text-slate-400 text-[11px]">0/0 Guru</span>
+                    <span id="jurusan-guru-pct" class="font-black text-amber-700 text-xs">0%</span>
+                  </div>
+                </div>
+                <div class="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div id="jurusan-guru-bar" class="h-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-full transition-all duration-500 w-0"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+            <span>Standar Kurikulum Merdeka & BOSP</span>
+            <span id="jurusan-top-badge" class="font-semibold text-slate-600">-</span>
+          </div>
+        </div>
+
+        <!-- Kolom Kanan (5 Cols): Feed 5 Tap Kartu RFID Terbaru -->
+        <div class="lg:col-span-5 p-5 rounded-3xl bg-white border border-slate-200/80 shadow-xs flex flex-col justify-between space-y-3">
+          <div>
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div class="flex items-center gap-2">
+                <span class="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                  <span class="material-symbols-outlined text-[18px]">sensors</span>
+                </span>
+                <div>
+                  <h3 class="font-bold text-slate-900 text-sm">Aktivitas Gerbang Terbaru</h3>
+                  <p class="text-[11px] text-slate-400">5 tap kartu RFID terakhir hari ini.</p>
+                </div>
+              </div>
+              <span class="relative flex h-2 w-2">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+            </div>
+
+            <!-- List Taps Dinamis -->
+            <div id="rekap-recent-taps" class="space-y-2 pt-2">
+              <div class="py-6 text-center text-slate-400 text-xs font-medium">
+                Belum ada tap kartu RFID hari ini.
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+            <span class="text-slate-400 text-[11px]">Gerbang IoT Aktif</span>
+            <button
+              type="button"
+              onclick="document.querySelector('[data-target=\'sec-riwayat\']')?.click()"
+              class="font-bold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-0.5 text-[11px] cursor-pointer"
+            >
+              <span>Semua Log</span>
+              <span class="material-symbols-outlined text-xs">arrow_forward</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================
+         SECTION 2: DOKUMEN & CETAK PDF (DUAL-COLUMN BERISI & MINIMALIS)
+         ======================================================== -->
+    <section id="sec-dokumen" class="rekap-section space-y-5 hidden">
+      <!-- Grid 2 Kolom: Kiri Katalog Dokumen (7 cols), Kanan Validasi Pengesahan (5 cols) -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        
+        <!-- KOLOM KIRI (7 Kolom): Berita Acara & Dokumen Siap Diterbitkan -->
+        <div class="lg:col-span-7 space-y-4">
+          
+          <!-- Card Generator Dokumen Berjenjang -->
+          <div class="p-6 rounded-3xl bg-white border border-slate-200/90 shadow-xs space-y-5">
+            <!-- Header Form -->
+            <div class="flex items-center justify-between pb-3.5 border-b border-slate-100">
+              <div class="flex items-center gap-2.5">
+                <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20">
+                  <span class="material-symbols-outlined text-xl">tune</span>
+                </div>
+                <div>
+                  <h2 class="text-sm font-black text-slate-900">Generator Rekap & Download PDF</h2>
+                  <p class="text-[11px] text-slate-500">Pilih kriteria berjenjang untuk menyusun dokumen resmi dinas.</p>
+                </div>
+              </div>
+              <span class="px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-[10px] font-bold">
+                Step-by-Step
+              </span>
+            </div>
+
+            <!-- STEP 1: PILIH JURUSAN / KATEGORI -->
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <label class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <span class="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-black flex items-center justify-center">1</span>
+                  <span>Pilih Jurusan / Kategori</span>
+                </label>
+                <span id="gen-jurusan-badge" class="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md">Semua Jurusan</span>
+              </div>
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <button type="button" class="gen-dept-btn px-3 py-2.5 rounded-2xl border-2 border-blue-600 bg-blue-50/70 text-blue-900 font-bold text-xs flex flex-col items-center gap-1 transition-all active:scale-95 cursor-pointer text-center" data-dept="all">
+                  <span class="material-symbols-outlined text-lg text-blue-600">domain</span>
+                  <span>Semua</span>
+                </button>
+                <button type="button" class="gen-dept-btn px-3 py-2.5 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs flex flex-col items-center gap-1 transition-all active:scale-95 cursor-pointer text-center" data-dept="akl">
+                  <span class="material-symbols-outlined text-lg text-emerald-600">account_balance</span>
+                  <span>AKL</span>
+                </button>
+                <button type="button" class="gen-dept-btn px-3 py-2.5 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs flex flex-col items-center gap-1 transition-all active:scale-95 cursor-pointer text-center" data-dept="rpl">
+                  <span class="material-symbols-outlined text-lg text-indigo-600">terminal</span>
+                  <span>RPL</span>
+                </button>
+                <button type="button" class="gen-dept-btn px-3 py-2.5 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs flex flex-col items-center gap-1 transition-all active:scale-95 cursor-pointer text-center" data-dept="guru">
+                  <span class="material-symbols-outlined text-lg text-amber-600">co_present</span>
+                  <span>Dewan Guru</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- STEP 2: PILIH KELAS / ROMBEL -->
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <label for="gen-class-select" class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <span class="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-black flex items-center justify-center">2</span>
+                  <span>Pilih Kelas / Rombel</span>
+                </label>
+                <span id="gen-class-count" class="text-[10px] font-medium text-slate-400">Pilihan dinamis</span>
+              </div>
+              <div class="relative">
+                <select id="gen-class-select" class="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 cursor-pointer appearance-none">
+                  <option value="all">Semua Kelas & Seluruh Civitas</option>
+                  <optgroup label="Teknik Komputer & Informatika / RPL">
+                    <option value="X RPL">X RPL</option>
+                    <option value="XI RPL">XI RPL</option>
+                    <option value="XII RPL">XII RPL</option>
+                  </optgroup>
+                  <optgroup label="Akuntansi & Keuangan Lembaga / AKL">
+                    <option value="X AKL">X AKL</option>
+                    <option value="XI AKL">XI AKL</option>
+                    <option value="XII AKL">XII AKL</option>
+                  </optgroup>
+                  <optgroup label="Civitas Pendidik">
+                    <option value="guru">Dewan Guru & Staf</option>
+                  </optgroup>
+                </select>
+                <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-base">expand_more</span>
+              </div>
+            </div>
+
+            <!-- STEP 3: PILIH RENTANG WAKTU -->
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <label class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <span class="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-black flex items-center justify-center">3</span>
+                  <span>Pilih Rentang Waktu</span>
+                </label>
+                <span id="gen-period-badge" class="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md">Hari Ini</span>
+              </div>
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <button type="button" class="gen-time-btn px-3 py-2 rounded-2xl border-2 border-indigo-600 bg-indigo-50/70 text-indigo-900 font-bold text-xs transition-all active:scale-95 cursor-pointer text-center" data-time="today">
+                  Hari Ini
+                </button>
+                <button type="button" class="gen-time-btn px-3 py-2 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition-all active:scale-95 cursor-pointer text-center" data-time="week">
+                  1 Minggu
+                </button>
+                <button type="button" class="gen-time-btn px-3 py-2 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition-all active:scale-95 cursor-pointer text-center" data-time="month">
+                  1 Bulan
+                </button>
+                <button type="button" class="gen-time-btn px-3 py-2 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition-all active:scale-95 cursor-pointer text-center" data-time="all">
+                  1 Tahun / Arsip
+                </button>
+              </div>
+            </div>
+
+            <!-- REKOMENDASI 1: OPSI POIN KEDISIPLINAN BK (TERINTEGRASI) -->
+            <div class="p-3.5 rounded-2xl bg-amber-50/60 border border-amber-200/80 flex items-start gap-3">
+              <span class="material-symbols-outlined text-amber-600 text-lg mt-0.5 shrink-0">verified_user</span>
+              <div class="flex-1 text-xs">
+                <div class="flex items-center justify-between">
+                  <span class="font-bold text-amber-950">Rekap Poin Disiplin Terintegrasi</span>
+                  <span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[9px] font-black uppercase tracking-wider">Rekomendasi 1</span>
+                </div>
+                <p class="text-[11px] text-amber-800/90 mt-0.5 leading-relaxed">
+                  Setiap baris presensi otomatis mencantumkan sisa poin kedisiplinan dan status sanksi, serta mini-ringkasan kepatuhan BK di bagian bawah dokumen.
+                </p>
+              </div>
+            </div>
+
+            <!-- ACTION BUTTONS: DOWNLOAD PDF + PRINT PREVIEW + SALIN WA -->
+            <div class="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2.5">
+              <div class="flex items-center gap-2">
+                <button
+                  type="button"
+                  id="btn-gen-download-pdf"
+                  class="px-4 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-blue-600/20 transition-all active:scale-95 cursor-pointer"
+                >
+                  <span class="material-symbols-outlined text-base">download</span>
+                  <span>Download PDF</span>
+                </button>
+                <button
+                  type="button"
+                  id="btn-gen-preview"
+                  class="px-3.5 py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+                >
+                  <span class="material-symbols-outlined text-base">visibility</span>
+                  <span>Pratinjau</span>
+                </button>
+              </div>
+
+              <button
+                type="button"
+                id="btn-gen-copy-wa"
+                class="px-3.5 py-2 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+              >
+                <span class="material-symbols-outlined text-base text-emerald-600">chat</span>
+                <span>Salin WA</span>
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- KOLOM KANAN (5 Kolom): Panel Pengesahan & Standar Validasi Dokumen -->
+        <div class="lg:col-span-5 space-y-4">
+          
+          <!-- Panel Pengesahan Digital & Legalitas -->
+          <div class="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-xs space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div class="flex items-center gap-2">
+                <span class="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <span class="material-symbols-outlined text-lg">verified</span>
+                </span>
+                <div>
+                  <h3 class="text-sm font-bold text-slate-900">Pengesahan Digital</h3>
+                  <p class="text-[11px] text-slate-400">Keabsahan dokumen dinas</p>
+                </div>
+              </div>
+              <span class="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">Otentik</span>
+            </div>
+
+            <!-- Preview Stempel Digital -->
+            <div class="p-3.5 rounded-2xl bg-gradient-to-br from-blue-50/70 to-indigo-50/40 border border-blue-100 flex items-center gap-3.5">
+              <div class="w-12 h-12 rounded-full border-2 border-dashed border-blue-600 flex items-center justify-center bg-white shadow-xs shrink-0">
+                <span class="material-symbols-outlined text-blue-600 text-xl">approval</span>
+              </div>
+              <div class="min-w-0">
+                <p class="text-[11px] font-mono font-bold text-blue-900 uppercase">CAP RESMI DIGITAL</p>
+                <p class="text-[10px] text-slate-600 truncate font-semibold">SMK MA'ARIF PADANG RATU</p>
+                <p class="text-[9px] text-slate-400 mt-0.5">NSS: 322120205001 • NPSN: 10802050</p>
+              </div>
+            </div>
+
+            <!-- Pejabat Penandatangan Sah (Dinamis dari Database) -->
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Pejabat Pengesah</p>
+                <a href="/siswa-guru" class="text-[10px] font-semibold text-blue-600 hover:underline">Kelola di Civitas →</a>
+              </div>
+              
+              <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                <div class="min-w-0">
+                  <p id="screen-kepsek-name" class="text-xs font-bold text-slate-800 truncate">H. Ahmad Fauzi, S.Pd., M.M.</p>
+                  <p id="screen-kepsek-nip" class="text-[10px] text-slate-400">Kepala Sekolah • NIP. 197805122005011008</p>
+                </div>
+                <span class="text-[10px] font-bold text-purple-700 bg-purple-100/80 px-2 py-0.5 rounded-md shrink-0">Pengesah</span>
+              </div>
+
+              <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                <div class="min-w-0">
+                  <p id="screen-waka-name" class="text-xs font-bold text-slate-800 truncate">Wahyu Hidayat, M.Kom</p>
+                  <p id="screen-waka-nip" class="text-[10px] text-slate-400">Waka Kesiswaan • NIP. 198403152009021003</p>
+                </div>
+                <span class="text-[10px] font-bold text-blue-700 bg-blue-100/70 px-2 py-0.5 rounded-md shrink-0">Pemeriksa</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Panduan Cetak PDF (Minimalis 3 Langkah) -->
+          <div class="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-xs space-y-3">
+            <h3 class="text-xs font-bold text-slate-900 flex items-center gap-2">
+              <span class="material-symbols-outlined text-blue-600 text-base">info</span>
+              <span>Panduan Unduh & Cetak A4</span>
+            </h3>
+            
+            <div class="space-y-2.5 text-xs text-slate-600">
+              <div class="flex items-start gap-2.5">
+                <span class="w-5 h-5 rounded-full bg-slate-100 text-slate-700 font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">1</span>
+                <span>Tentukan Jurusan dan Kelas pada form generator di sebelah kiri.</span>
+              </div>
+              <div class="flex items-start gap-2.5">
+                <span class="w-5 h-5 rounded-full bg-slate-100 text-slate-700 font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">2</span>
+                <span>Pilih rentang waktu presensi (Hari ini, 1 Minggu, 1 Bulan, atau 1 Tahun).</span>
+              </div>
+              <div class="flex items-start gap-2.5">
+                <span class="w-5 h-5 rounded-full bg-slate-100 text-slate-700 font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">3</span>
+                <span>Klik <strong class="text-blue-600">Download PDF</strong> untuk mengunduh berkas `.pdf` sah berstempel dinas.</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Database Cloud Turso LibSQL -->
+          <div class="p-4 rounded-3xl bg-slate-50 border border-slate-200/60 flex items-center gap-3">
+            <span class="material-symbols-outlined text-blue-600 text-xl shrink-0">cloud_done</span>
+            <p class="text-[11px] text-slate-500 leading-tight">
+              Data terverifikasi langsung dari cloud Turso LibSQL, menjamin keaslian dan legalitas dokumen.
+            </p>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ========================================================
+         SECTION 3: RIWAYAT & ARSIP LOG (MINIMALIS & BERISI)
+         ======================================================== -->
+    <section id="sec-riwayat" class="rekap-section space-y-5 hidden">
+      <!-- 3 Kartu Ringkasan Indikator Log -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+        <div class="p-4 rounded-3xl bg-white border border-slate-200/80 shadow-xs flex items-center justify-between">
+          <div>
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Catatan</p>
+            <p id="log-stat-count" class="text-xl font-black text-slate-900 mt-0.5">0 Data</p>
+            <p class="text-[10px] text-slate-500 mt-0.5">Sesuai filter aktif</p>
+          </div>
+          <div class="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
+            <span class="material-symbols-outlined text-xl">dataset</span>
+          </div>
+        </div>
+
+        <div class="p-4 rounded-3xl bg-white border border-slate-200/80 shadow-xs flex items-center justify-between">
+          <div>
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Hadir Terverifikasi</p>
+            <p id="log-stat-hadir" class="text-xl font-black text-slate-900 mt-0.5">0 Civitas</p>
+            <p class="text-[10px] text-emerald-600 font-semibold mt-0.5">Sensor Gerbang RFID</p>
+          </div>
+          <div class="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+            <span class="material-symbols-outlined text-xl">check_circle</span>
+          </div>
+        </div>
+
+        <div class="p-4 rounded-3xl bg-white border border-slate-200/80 shadow-xs flex items-center justify-between">
+          <div>
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status Arsip</p>
+            <p class="text-xl font-black text-slate-900 mt-0.5">Live Cloud</p>
+            <p class="text-[10px] text-slate-500 mt-0.5">Turso LibSQL (SG)</p>
+          </div>
+          <div class="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+            <span class="material-symbols-outlined text-xl">cloud_done</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabel Container Utama -->
+      <div class="bg-white rounded-3xl shadow-xs border border-slate-200/80 overflow-hidden">
+        <!-- Filter & Action Toolbar Terpadu -->
+        <div class="p-4 sm:p-5 border-b border-slate-200/80 bg-slate-50/70 space-y-3">
+          <!-- Row 1: Judul, Status & Unduh CSV -->
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="flex items-center gap-2.5">
+              <span class="relative flex h-2.5 w-2.5">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+              </span>
+              <h2 id="rekap-table-title" class="text-sm font-bold text-slate-900">Riwayat Presensi</h2>
+              <span id="rekap-log-count" class="text-[11px] font-bold text-blue-800 bg-blue-100/90 border border-blue-200 px-2.5 py-0.5 rounded-full">0 Data</span>
+            </div>
+            
+            <button
+              type="button"
+              id="btn-export-excel"
+              class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-all active:scale-95 cursor-pointer self-start sm:self-auto"
+              title="Unduh seluruh data yang tampil ke file CSV / Excel"
+            >
+              <span class="material-symbols-outlined text-base">download</span>
+              <span>Unduh CSV</span>
+            </button>
+          </div>
+
+          <!-- Row 2: Search Input + Rombel Select + Filter Periode (Rapi & Sejajar) -->
+          <div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5 pt-2 border-t border-slate-200/60">
+            <!-- Search Input Realtime -->
+            <div class="relative flex-1 min-w-[200px]">
+              <span class="material-symbols-outlined text-slate-400 text-sm absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">search</span>
+              <input
+                id="filter-search"
+                type="text"
+                placeholder="Cari nama atau NISN..."
+                class="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600"
+              />
+            </div>
+
+            <!-- Controls: Rombel Dropdown & Periode Switcher -->
+            <div class="flex flex-wrap items-center gap-2">
+              <!-- Filter Rombel -->
+              <div class="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs">
+                <span class="material-symbols-outlined text-slate-400 text-sm">groups</span>
+                <select id="filter-rombel" class="bg-transparent font-bold text-slate-800 text-xs focus:outline-none cursor-pointer">
+                  <option value="all">Semua Rombel & Guru</option>
+                  <optgroup label="Teknik Komputer & Jaringan / RPL">
+                    <option value="X RPL">X RPL</option>
+                    <option value="XI RPL">XI RPL</option>
+                    <option value="XII RPL">XII RPL</option>
+                  </optgroup>
+                  <optgroup label="Akuntansi & Keuangan Lembaga">
+                    <option value="X AKL">X AKL</option>
+                    <option value="XI AKL">XI AKL</option>
+                    <option value="XII AKL">XII AKL</option>
+                  </optgroup>
+                  <optgroup label="Civitas Pendidik">
+                    <option value="guru">Dewan Guru & Staf</option>
+                  </optgroup>
+                </select>
+              </div>
+
+              <!-- Filter Buttons Periode -->
+              <div class="inline-flex rounded-xl bg-slate-200/80 p-0.5 text-xs font-semibold" id="filter-buttons">
+                <button type="button" data-filter="today" class="filter-btn active px-3 py-1.5 rounded-lg bg-white text-blue-700 shadow-xs transition-all font-bold">Hari Ini</button>
+                <button type="button" data-filter="week" class="filter-btn px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition-all font-medium">7 Hari</button>
+                <button type="button" data-filter="month" class="filter-btn px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition-all font-medium">30 Hari</button>
+                <button type="button" data-filter="all" class="filter-btn px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition-all font-medium">Semua</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabel Log dengan Sticky Header & Zebra Striping -->
+        <div class="overflow-x-auto max-h-[580px] overflow-y-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="sticky top-0 z-10 bg-slate-100/95 backdrop-blur-sm text-slate-700 font-extrabold uppercase tracking-wider text-[10px] border-b border-slate-200 shadow-xs">
+              <tr>
+                <th scope="col" class="py-3 px-5 bg-slate-100/95">Civitas</th>
+                <th scope="col" class="py-3 px-4 bg-slate-100/95">Kelas</th>
+                <th scope="col" class="py-3 px-4 bg-slate-100/95">Tanggal</th>
+                <th scope="col" class="py-3 px-4 bg-slate-100/95">Sesi & Jam</th>
+                <th scope="col" class="py-3 px-4 bg-slate-100/95">Status</th>
+                <th scope="col" class="py-3 px-4 bg-slate-100/95">Poin Disiplin</th>
+              </tr>
+            </thead>
+            <tbody id="rekap-log-body" class="divide-y divide-slate-100 text-slate-700">
+              <tr><td colspan="6" class="py-8 text-center text-slate-400 font-medium">Memuat data presensi...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Table Footer Info -->
+        <div class="p-3.5 bg-slate-50/90 border-t border-slate-200/80 flex items-center justify-between text-[11px] text-slate-500">
+          <span id="rekap-log-footer-text">Menampilkan 0 data presensi</span>
+          <span class="flex items-center gap-1 font-semibold text-slate-600">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+            Turso Cloud Synced
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================
+         SECTION 4: OTOMATISASI & KONTROL (MINIMALIS & BERISI)
+         ======================================================== -->
+    <section id="sec-otomatisasi" class="rekap-section space-y-4 hidden">
+      <div class="flex items-center justify-between px-1">
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-blue-600"></span>
+          <h2 class="text-xs font-bold text-slate-800 uppercase tracking-wider">Kontrol Tugas Sistem</h2>
+        </div>
+        <span class="text-[11px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2.5 py-0.5 rounded-full">2 Tugas Utama</span>
+      </div>
+
+      <!-- Grid 2 Kartu Tindakan Fungsional & Bersih -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <!-- Card 1: Evaluasi & Tindak Lanjut Bolos -->
+        <div class="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-xs hover:border-rose-200 hover:shadow-md transition-all duration-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center gap-2 mb-3">
+              <span class="px-2.5 py-0.5 rounded-full bg-rose-50 border border-rose-200 text-rose-800 text-[10px] font-bold inline-flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-rose-600"></span>
+                Sanksi Disiplin
+              </span>
+              <span class="px-2.5 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-700 text-[10px] font-bold">
+                Semua Siswa
+              </span>
+            </div>
+            <div class="flex items-start gap-3.5">
+              <div class="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0 border border-rose-100">
+                <span class="material-symbols-outlined text-2xl">gavel</span>
+              </div>
+              <div>
+                <h3 class="font-black text-slate-900 text-base">Tindak Lanjut Siswa Bolos</h3>
+                <p class="text-xs text-slate-500 mt-1 leading-relaxed">
+                  Pilih siswa yang tertangkap basah bolos saat jam KBM untuk langsung dikenai sanksi pemotongan <strong class="text-rose-600 font-bold">-10 Poin Disiplin</strong>.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between gap-3">
+            <span class="text-xs text-slate-400 font-medium flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-sm text-slate-400">schedule</span>
+              Jadwal Otomatis: 17:00 WIB
+            </span>
+            <button
+              id="btn-eval-bolos"
+              type="button"
+              class="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer"
+            >
+              <span class="material-symbols-outlined text-sm">gavel</span>
+              <span>Tindak Lanjuti</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Card 2: Arsip & Reset Harian -->
+        <div class="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-xs hover:border-slate-400 hover:shadow-md transition-all duration-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center gap-2 mb-3">
+              <span class="px-2.5 py-0.5 rounded-full bg-slate-100 border border-slate-300 text-slate-800 text-[10px] font-bold inline-flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-slate-600"></span>
+                Pemeliharaan Rutin
+              </span>
+              <span class="px-2.5 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-blue-800 text-[10px] font-bold">
+                Jadwal 23:00 WIB
+              </span>
+            </div>
+            <div class="flex items-start gap-3.5">
+              <div class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-800 flex items-center justify-center shrink-0 border border-slate-200">
+                <span class="material-symbols-outlined text-2xl">archive</span>
+              </div>
+              <div>
+                <h3 class="font-black text-slate-900 text-base">Arsip & Reset Harian</h3>
+                <p class="text-xs text-slate-500 mt-1 leading-relaxed">
+                  Menyimpan rekaman presensi hari ini ke tabel arsip histori permanen dan mereset status mesin presensi agar bersih dan siap digunakan esok hari.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between gap-3">
+            <span class="text-xs text-slate-400 font-medium flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-sm text-slate-400">history</span>
+              Jadwal Otomatis: 23:00 WIB
+            </span>
+            <button
+              id="btn-trigger-archive"
+              type="button"
+              class="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer"
+            >
+              <span class="material-symbols-outlined text-sm">archive</span>
+              <span>Jalankan Sekarang</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ========================================================
+       3. DOKUMEN CETAK RESMI STANDAR DINAS (UNTUK PRINT PDF)
+       (Hanya Tampil Saat Dicetak Melalui Dialog Browser)
+       ======================================================== -->
+  <div id="print-area" class="hidden print:block bg-white text-black p-8 font-serif leading-relaxed">
+    <!-- Kop Surat Resmi -->
+    <div class="text-center pb-4 border-b-4 border-double border-black">
+      <h3 class="text-xs font-bold tracking-widest uppercase">Lembaga Pendidikan Ma'arif NU Lampung Tengah</h3>
+      <h1 class="text-2xl font-black tracking-wide uppercase mt-0.5">SMK MA'ARIF PADANG RATU</h1>
+      <p class="text-[11px] font-semibold text-slate-800">
+        Status Terakreditasi | NSS: 322120205001 | NPSN: 10802050
+      </p>
+      <p class="text-[10px] text-slate-600 mt-0.5">
+        Alamat: Jl. Raya Padang Ratu No. 01, Kec. Padang Ratu, Kab. Lampung Tengah, Kode Pos 34176
+      </p>
+      <p class="text-[10px] text-slate-600 font-sans">
+        Website: smkmaarifpadangratu.sch.id • Email: smkmaarifpadangratu@gmail.com
+      </p>
+    </div>
+
+    <!-- Judul Dokumen Berita Acara -->
+    <div class="text-center my-6">
+      <h2 id="print-doc-title" class="text-base font-bold uppercase underline tracking-wider">
+        BERITA ACARA REKAPITULASI PRESENSI RESMI (RFID & IOT)
+      </h2>
+      <p id="print-doc-target" class="text-xs font-bold uppercase mt-1 text-slate-800 tracking-wide font-sans">
+        SASARAN: SEMUA ROMBEL & DEWAN GURU
+      </p>
+      <p class="text-xs font-sans mt-0.5 text-slate-700">
+        Nomor: 421.5/<span id="print-doc-no">091</span>/SMK-MR/<span id="print-doc-year">2026</span>
+      </p>
+      <p class="text-xs font-sans text-slate-700">
+        Hari / Tanggal: <span id="print-doc-date" class="font-bold">-</span>
+      </p>
+    </div>
+
+    <!-- Ringkasan Statistik Angka Pada Lembar Cetak -->
+    <div class="mb-5 font-sans">
+      <table class="w-full text-xs border border-black text-center border-collapse">
+        <thead>
+          <tr class="bg-slate-100 font-bold border-b border-black">
+            <th class="py-2 px-3 border-r border-black">Hadir Tepat Waktu</th>
+            <th class="py-2 px-3 border-r border-black">Terlambat</th>
+            <th class="py-2 px-3 border-r border-black">Bolos (-10P)</th>
+            <th class="py-2 px-3 border-r border-black">Izin / Dispensasi</th>
+            <th class="py-2 px-3 border-r border-black">Sudah Pulang</th>
+            <th class="py-2 px-3">Belum Absen</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="font-bold text-sm">
+            <td id="print-stat-hadir" class="py-2 border-r border-black">0</td>
+            <td id="print-stat-terlambat" class="py-2 border-r border-black">0</td>
+            <td id="print-stat-bolos" class="py-2 border-r border-black text-rose-700">0</td>
+            <td id="print-stat-izin" class="py-2 border-r border-black">0</td>
+            <td id="print-stat-pulang" class="py-2 border-r border-black">0</td>
+            <td id="print-stat-belum" class="py-2">0</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Tabel Rincian Data Log Presensi Cetak -->
+    <div class="mb-8 font-sans">
+      <h3 id="print-table-title" class="text-xs font-bold uppercase mb-2">Rincian Kehadiran Civitas Hari Ini:</h3>
+      <table class="w-full text-xs border border-black border-collapse">
+        <thead>
+          <tr class="bg-slate-100 font-bold border-b border-black text-center">
+            <th class="py-2 px-1 border-r border-black w-8">No</th>
+            <th class="py-2 px-2 border-r border-black w-24">NISN / NIP</th>
+            <th class="py-2 px-3 border-r border-black text-left">Nama Civitas</th>
+            <th class="py-2 px-2 border-r border-black text-left w-24">Kelas / Rombel</th>
+            <th class="py-2 px-2 border-r border-black w-14">Sesi</th>
+            <th class="py-2 px-2 border-r border-black w-20">Jam</th>
+            <th class="py-2 px-2 border-r border-black w-20">Status</th>
+            <th class="py-2 px-2 border-r border-black w-20">Sisa Poin</th>
+            <th class="py-2 px-2">Paraf / Sistem</th>
+          </tr>
+        </thead>
+        <tbody id="print-table-body" class="divide-y divide-black">
+          <tr><td colspan="9" class="py-4 text-center">Tidak ada catatan presensi pada periode ini.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Mini-Ringkasan Status Kedisiplinan & Poin BK (Rekomendasi 1) -->
+    <div id="print-discipline-summary" class="mb-6 font-sans">
+      <div class="border border-black p-3 text-[11px] bg-slate-50">
+        <div class="flex items-center justify-between pb-1.5 border-b border-black font-bold text-xs uppercase">
+          <span>Ringkasan Kedisiplinan & Catatan Poin BK</span>
+          <span class="text-[10px] font-mono">Standard Tata Tertib SMK</span>
+        </div>
+        <div class="grid grid-cols-3 gap-2 pt-2 text-center">
+          <div class="border-r border-black">
+            <span class="block text-slate-600 text-[10px]">Tertib Sempurna (100 Poin)</span>
+            <span id="print-stat-disiplin-sempurna" class="font-black text-sm text-emerald-800">0 Siswa</span>
+          </div>
+          <div class="border-r border-black">
+            <span class="block text-slate-600 text-[10px]">Teguran / SP-1 (75–99 Poin)</span>
+            <span id="print-stat-disiplin-sp1" class="font-black text-sm text-amber-800">0 Siswa</span>
+          </div>
+          <div>
+            <span class="block text-slate-600 text-[10px]">Peringatan SP-2 (&lt; 75 Poin)</span>
+            <span id="print-stat-disiplin-sp2" class="font-black text-sm text-rose-800">0 Siswa</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Lembar Pengesahan Tanda Tangan & Stempel (Dinamis dari Database) -->
+    <div class="grid grid-cols-2 gap-8 text-center text-xs mt-10 font-sans">
+      <div>
+        <p>Mengetahui,</p>
+        <p class="font-bold">Waka Kesiswaan / Petugas Piket</p>
+        <div class="h-20 flex items-center justify-center">
+          <span class="text-[10px] text-slate-400 italic">[Tanda Tangan Petugas]</span>
+        </div>
+        <p id="print-waka-name" class="font-bold underline">Wahyu Hidayat, M.Kom</p>
+        <p id="print-waka-nip" class="text-[11px]">NIP. 198403152009021003</p>
+      </div>
+
+      <div class="relative">
+        <p>Padang Ratu, <span id="print-sign-date">-</span></p>
+        <p class="font-bold">Kepala SMK Ma'arif Padang Ratu</p>
+        
+        <!-- Stempel Digital Formal -->
+        <div class="h-20 flex items-center justify-center relative">
+          <div class="w-24 h-24 rounded-full border-2 border-blue-900/40 text-blue-900/60 flex flex-col items-center justify-center text-[8px] font-black uppercase text-center p-1 rotate-[-12deg] absolute pointer-events-none">
+            <span>SMK MA'ARIF</span>
+            <span class="text-[6px] tracking-widest my-0.5">★ RESMI ★</span>
+            <span>PADANG RATU</span>
+          </div>
+          <span class="text-[10px] text-slate-400 italic relative z-10">[Tanda Tangan & Cap Sah]</span>
+        </div>
+
+        <p id="print-kepsek-name" class="font-bold underline">H. Ahmad Fauzi, S.Pd., M.M.</p>
+        <p id="print-kepsek-nip" class="text-[11px]">NIP. 197805122005011008</p>
+      </div>
+    </div>
+
+    <!-- Footer Dokumen Formal -->
+    <div class="mt-8 pt-3 border-t border-slate-300 text-[10px] text-slate-500 flex justify-between items-center font-sans">
+      <span>Dokumen Sah Sistem Presensi Terintegrasi SI-HADIR IoT</span>
+      <span>Halaman 1 dari 1</span>
+    </div>
+  </div>
+
+  <!-- Modal Pratinjau Dokumen Cetak A4 Di Layar -->
+  <div id="modal-print-preview" class="hidden fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+    <div class="bg-slate-100 rounded-3xl w-full max-w-4xl max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden">
+      <!-- Modal Header -->
+      <div class="bg-white px-5 py-3.5 border-b border-slate-200 flex items-center justify-between shrink-0">
+        <div class="flex items-center gap-2.5">
+          <span class="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+            <span class="material-symbols-outlined text-lg">visibility</span>
+          </span>
+          <div>
+            <h3 class="text-xs font-black text-slate-900">Pratinjau Dokumen Cetak A4</h3>
+            <p class="text-[10px] text-slate-500">Lembar resmi berstempel dan tanda tangan dinas</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            id="modal-btn-download"
+            class="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition active:scale-95 cursor-pointer"
+          >
+            <span class="material-symbols-outlined text-sm">download</span>
+            <span>Download PDF</span>
+          </button>
+          <button
+            type="button"
+            id="modal-btn-close"
+            class="w-7 h-7 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-xs transition cursor-pointer ml-1"
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+
+      <!-- Modal Body (Paper preview area) -->
+      <div class="p-6 overflow-y-auto flex-1 flex justify-center bg-slate-200/90">
+        <div id="modal-paper-container" class="bg-white shadow-xl rounded-sm p-8 w-full max-w-[210mm] text-black border border-slate-300">
+          <!-- Document content cloned here dynamically -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Dialog: Tindak Lanjut Siswa Bolos (Step-by-Step Interaktif Sesuai Form Tambah Siswa) -->
+  <div id="modal-tindak-bolos" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md hidden items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white rounded-[2.5rem] max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-slate-100 space-y-5 relative overflow-hidden animate-in fade-in zoom-in-95 duration-200 my-8">
+      <!-- Decorative background orbs -->
+      <div class="absolute -top-14 -right-14 w-40 h-40 rounded-full bg-rose-500/10 blur-2xl pointer-events-none"></div>
+      <div class="absolute -bottom-14 -left-14 w-40 h-40 rounded-full bg-blue-500/10 blur-2xl pointer-events-none"></div>
+
+      <!-- Header -->
+      <div class="flex items-center justify-between relative z-10">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100 shadow-xs">
+            <span class="material-symbols-outlined text-xl">gavel</span>
+          </div>
+          <div>
+            <h2 class="text-base sm:text-lg font-black text-slate-900 tracking-tight">Tindak Lanjut Siswa Bolos</h2>
+            <p class="text-[11px] text-slate-400">Pencatatan Sanksi & Pengurangan -10 Poin</p>
+          </div>
+        </div>
+        <button id="btn-close-bolos-modal" type="button" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors cursor-pointer">
+          <span class="material-symbols-outlined text-sm">close</span>
+        </button>
+      </div>
+
+      <!-- Stepper Progress Bar (1: Jurusan - 2: Kelas - 3: Siswa - 4: Sanksi) -->
+      <div class="relative z-10 px-2 sm:px-4">
+        <div class="flex items-center justify-between relative">
+          <!-- Line connector -->
+          <div class="absolute top-3.5 left-5 right-5 h-0.5 bg-slate-200 -z-10">
+            <div id="bolos-progress-line" class="h-full bg-rose-600 transition-all duration-300" style="width: 0%"></div>
+          </div>
+
+          <!-- Step 1 -->
+          <div class="bolos-step-indicator flex flex-col items-center gap-1 cursor-pointer" data-step="1">
+            <div id="bolos-badge-1" class="w-7 h-7 rounded-full bg-rose-600 text-white font-black text-xs flex items-center justify-center shadow-md shadow-rose-500/30 transition-all">
+              1
+            </div>
+            <span id="bolos-label-1" class="text-[10px] font-bold text-rose-700 whitespace-nowrap">Jurusan</span>
+          </div>
+
+          <!-- Step 2 -->
+          <div class="bolos-step-indicator flex flex-col items-center gap-1 cursor-pointer" data-step="2">
+            <div id="bolos-badge-2" class="w-7 h-7 rounded-full bg-slate-100 text-slate-400 font-bold text-xs flex items-center justify-center transition-all">
+              2
+            </div>
+            <span id="bolos-label-2" class="text-[10px] font-semibold text-slate-400 whitespace-nowrap">Kelas</span>
+          </div>
+
+          <!-- Step 3 -->
+          <div class="bolos-step-indicator flex flex-col items-center gap-1 cursor-pointer" data-step="3">
+            <div id="bolos-badge-3" class="w-7 h-7 rounded-full bg-slate-100 text-slate-400 font-bold text-xs flex items-center justify-center transition-all">
+              3
+            </div>
+            <span id="bolos-label-3" class="text-[10px] font-semibold text-slate-400 whitespace-nowrap">Pilih Siswa</span>
+          </div>
+
+          <!-- Step 4 -->
+          <div class="bolos-step-indicator flex flex-col items-center gap-1 cursor-pointer" data-step="4">
+            <div id="bolos-badge-4" class="w-7 h-7 rounded-full bg-slate-100 text-slate-400 font-bold text-xs flex items-center justify-center transition-all">
+              4
+            </div>
+            <span id="bolos-label-4" class="text-[10px] font-semibold text-slate-400 whitespace-nowrap">Sanksi</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Panels Container -->
+      <div class="relative z-10 space-y-4 min-h-[220px]">
+        <!-- Step 1 Panel: Pilih Jurusan -->
+        <div id="bolos-panel-1" class="bolos-panel space-y-3">
+          <div class="border-b border-slate-100 pb-2">
+            <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider">Step 1: Pilih Jurusan Siswa</h3>
+            <p class="text-[11px] text-slate-500">Pilih program keahlian siswa yang ketahuan bolos.</p>
+          </div>
+          <div class="grid grid-cols-2 gap-3 pt-1">
+            <button
+              type="button"
+              class="bolos-dept-btn p-4 rounded-2xl border-2 border-slate-200 hover:border-rose-500 hover:bg-rose-50/50 bg-white transition-all text-left flex flex-col justify-between cursor-pointer group"
+              data-dept="rpl"
+            >
+              <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold mb-2 group-hover:scale-105 transition-transform">
+                <span class="material-symbols-outlined text-lg">code</span>
+              </div>
+              <h4 class="font-black text-slate-900 text-sm">Jurusan RPL</h4>
+              <p class="text-[10px] text-slate-500 mt-0.5">Rekayasa Perangkat Lunak</p>
+            </button>
+            <button
+              type="button"
+              class="bolos-dept-btn p-4 rounded-2xl border-2 border-slate-200 hover:border-rose-500 hover:bg-rose-50/50 bg-white transition-all text-left flex flex-col justify-between cursor-pointer group"
+              data-dept="akl"
+            >
+              <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold mb-2 group-hover:scale-105 transition-transform">
+                <span class="material-symbols-outlined text-lg">account_balance_wallet</span>
+              </div>
+              <h4 class="font-black text-slate-900 text-sm">Jurusan AKL</h4>
+              <p class="text-[10px] text-slate-500 mt-0.5">Akuntansi & Keuangan Lembaga</p>
+            </button>
+          </div>
+
+          <!-- Opsi Cepat Massal Seluruh Sekolah -->
+          <div class="pt-2 border-t border-slate-100 text-center">
+            <button
+              id="btn-bolos-bulk-all"
+              type="button"
+              class="text-xs text-rose-600 hover:text-rose-700 font-bold hover:underline inline-flex items-center gap-1 cursor-pointer"
+            >
+              <span class="material-symbols-outlined text-xs">auto_mode</span>
+              <span>Atau Jalankan Evaluasi Otomatis Seluruh Sekolah Sekaligus</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 2 Panel: Pilih Kelas -->
+        <div id="bolos-panel-2" class="bolos-panel space-y-3 hidden">
+          <div class="border-b border-slate-100 pb-2">
+            <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider">Step 2: Pilih Rombel Kelas</h3>
+            <p class="text-[11px] text-slate-500">Pilih rombel tempat siswa belajar.</p>
+          </div>
+          <div id="bolos-class-list" class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1">
+            <!-- Dynamic Class Buttons -->
+          </div>
+        </div>
+
+        <!-- Step 3 Panel: Pilih Siswa -->
+        <div id="bolos-panel-3" class="bolos-panel space-y-3 hidden">
+          <div class="border-b border-slate-100 pb-2 flex items-center justify-between">
+            <div>
+              <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider">Step 3: Pilih Nama Siswa</h3>
+              <p class="text-[11px] text-slate-500" id="bolos-student-class-hint">Pilih siswa yang ketahuan bolos</p>
+            </div>
+          </div>
+          <!-- Search box -->
+          <div>
+            <input
+              id="bolos-student-search"
+              type="text"
+              placeholder="Cari nama siswa atau NISN..."
+              class="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500"
+            />
+          </div>
+          <div id="bolos-student-list" class="max-h-56 overflow-y-auto space-y-1.5 pr-1">
+            <!-- Dynamic Students List -->
+          </div>
+        </div>
+
+        <!-- Step 4 Panel: Konfirmasi Sanksi -->
+        <div id="bolos-panel-4" class="bolos-panel space-y-3 hidden">
+          <div class="border-b border-slate-100 pb-2">
+            <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider">Step 4: Konfirmasi Tindak Lanjut</h3>
+            <p class="text-[11px] text-slate-500">Periksa detail siswa sebelum mengeksekusi sanksi.</p>
+          </div>
+
+          <div class="p-4 rounded-2xl bg-rose-50/70 border border-rose-200/80 space-y-3">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-2xl bg-white border border-rose-200 text-rose-700 flex items-center justify-center font-black text-sm shadow-xs">
+                <span id="bolos-conf-initial">A</span>
+              </div>
+              <div>
+                <h4 id="bolos-conf-name" class="font-black text-slate-900 text-sm">Nama Siswa</h4>
+                <p id="bolos-conf-meta" class="text-[11px] text-slate-500 font-mono">NISN: - • Kelas: -</p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 pt-2 border-t border-rose-200/60 text-xs">
+              <div class="p-2.5 rounded-xl bg-white/80 border border-rose-100">
+                <span class="text-[10px] text-slate-500 block font-medium">Sisa Poin Saat Ini</span>
+                <span id="bolos-conf-current-pts" class="font-black text-slate-900 text-sm font-mono">100 Poin</span>
+              </div>
+              <div class="p-2.5 rounded-xl bg-white/80 border border-rose-100">
+                <span class="text-[10px] text-rose-600 block font-bold">Sanksi Bolos</span>
+                <span class="font-black text-rose-600 text-sm font-mono">-10 Poin</span>
+              </div>
+            </div>
+
+            <div class="text-[11px] text-slate-600 bg-white/60 p-2.5 rounded-xl border border-rose-100 leading-relaxed">
+              ⚠️ Status presensi siswa hari ini akan diubah menjadi <strong class="text-rose-600 font-bold">Bolos</strong> dan pelanggaran tercatat di buku rekam jejak kesiswaan.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer Buttons -->
+      <div class="pt-3 border-t border-slate-100 flex items-center justify-between relative z-10">
+        <button
+          id="btn-bolos-back"
+          type="button"
+          class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition active:scale-95 cursor-pointer hidden"
+        >
+          ← Kembali
+        </button>
+        <div class="flex items-center gap-2 ml-auto">
+          <button
+            id="btn-bolos-cancel"
+            type="button"
+            class="px-4 py-2 rounded-xl text-slate-500 hover:text-slate-700 font-bold text-xs transition cursor-pointer"
+          >
+            Batal
+          </button>
+          <button
+            id="btn-bolos-submit"
+            type="button"
+            class="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-rose-500/25 transition active:scale-95 cursor-pointer hidden"
+          >
+            <span class="material-symbols-outlined text-sm">gavel</span>
+            <span>Tindak Lanjut & Potong Poin</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    @media print {
+      html, body, #main-content, main {
+        background: white !important;
+        color: black !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        overflow: visible !important;
+        height: auto !important;
+        min-height: auto !important;
+      }
+      body * {
+        visibility: hidden;
+      }
+      #print-area, #print-area * {
+        visibility: visible;
+      }
+      #print-area {
+        display: block !important;
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      header, nav, aside, #iot-simulator-root, .no-print, .print\:hidden {
+        display: none !important;
+      }
+      @page {
+        size: A4 portrait;
+        margin: 1.2cm;
+      }
+    }
+  </style>
+
+  <!-- Standalone High-Performance Vector PDF Libraries (Zero Vite optimize-dep friction) -->
+  <script is:inline src="/assets/jspdf.umd.min.js"></script>
+  <script is:inline src="/assets/jspdf.plugin.autotable.min.js"></script>
+
+  <!-- ========================================================
+       4. CLIENT SCRIPT (TAB SWITCHING & DATA BINDING)
+       ======================================================== -->
+  <script>
+    let cachedLogs: any[] = [];
+    let cachedStudents: any[] = [];
+    let cachedPermits: any[] = [];
+    let cachedDeductions: any[] = [];
+    let currentFilter: 'today' | 'week' | 'month' | 'all' = 'today';
+    let selectedClass: string = 'all';
+    let searchQuery: string = '';
+
+    const filterTitles: Record<string, string> = {
+      today: 'Riwayat Presensi Hari Ini (Realtime Turso Cloud)',
+      week: 'Arsip Presensi 7 Hari Terakhir (Turso Cloud)',
+      month: 'Arsip Presensi 30 Hari Terakhir (Turso Cloud)',
+      all: 'Seluruh Riwayat & Arsip Presensi (Turso Cloud)',
+    };
+
+    // Sub-nav Tab Switcher untuk Sidebar Khusus Rekap
+    function setupRekapSubnav() {
+      const navBtns = document.querySelectorAll('.rekap-nav-btn');
+      const sections = document.querySelectorAll('.rekap-section');
+      const titleEl = document.getElementById('rekap-current-tab-title');
+      const descEl = document.getElementById('rekap-current-tab-desc');
+
+      function switchTab(targetId: string) {
+        navBtns.forEach((btn) => {
+          const b = btn as HTMLElement;
+          const isTarget = b.dataset.target === targetId;
+          const chev = b.querySelector('.material-symbols-outlined:last-child') as HTMLElement | null;
+
+          if (isTarget) {
+            b.classList.add('bg-white', 'text-blue-900', 'font-bold', 'shadow-lg', 'shadow-blue-950/25', 'border-l-4', 'border-indigo-700', 'translate-x-1');
+            b.classList.remove('text-blue-100/80', 'hover:text-white', 'hover:bg-white/15', 'hover:translate-x-0.5');
+            if (chev) chev.style.opacity = '1';
+
+            if (titleEl && b.dataset.title) titleEl.textContent = b.dataset.title;
+            if (descEl && b.dataset.desc) descEl.textContent = b.dataset.desc;
+          } else {
+            b.classList.remove('bg-white', 'text-blue-900', 'font-bold', 'shadow-lg', 'shadow-blue-950/25', 'border-l-4', 'border-indigo-700', 'translate-x-1');
+            b.classList.add('text-blue-100/80', 'hover:text-white', 'hover:bg-white/15', 'hover:translate-x-0.5');
+            if (chev) chev.style.opacity = '0.6';
+          }
+        });
+
+        sections.forEach((sec) => {
+          if (sec.id === targetId) {
+            sec.classList.remove('hidden');
+          } else {
+            sec.classList.add('hidden');
+          }
+        });
+      }
+
+      navBtns.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const targetId = (btn as HTMLElement).dataset.target;
+          if (targetId) switchTab(targetId);
+        });
+      });
+    }
+
+    let studentByRfid: Record<string, any> = {};
+    let studentByName: Record<string, any> = {};
+
+    function getStudentPoints(rfidUid?: string, studentId?: string, role?: string): number {
+      if (role === 'guru' || role === 'admin') return 100;
+      let totalDed = 0;
+      const cleanRfid = (rfidUid || '').trim().toUpperCase();
+      const cleanSid = (studentId || '').trim().toUpperCase();
+
+      if (Array.isArray(cachedDeductions)) {
+        cachedDeductions.forEach((d: any) => {
+          const dRfid = (d.rfidUid || '').trim().toUpperCase();
+          const dSid = (d.studentId || '').trim().toUpperCase();
+          if ((cleanRfid && dRfid === cleanRfid) || (cleanSid && dSid === cleanSid)) {
+            totalDed += Number(d.pointsDeducted) || 0;
+          }
+        });
+      }
+      return Math.max(0, 100 - totalDed);
+    }
+
+    function getFilteredLogs(): any[] {
+      let logs = cachedLogs;
+      if (selectedClass !== 'all') {
+        if (selectedClass === 'guru') {
+          logs = logs.filter((l: any) => 
+            l.role === 'guru' || 
+            (l.className && (l.className.toLowerCase().includes('guru') || l.className.toLowerCase().includes('kepala')))
+          );
+        } else {
+          logs = logs.filter((l: any) => l.className === selectedClass);
+        }
+      }
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        logs = logs.filter((l: any) => {
+          const name = (l.name || '').toLowerCase();
+          const rfid = (l.rfidUid || '').toLowerCase();
+          const cls = (l.className || '').toLowerCase();
+          const st = (l.rfidUid && studentByRfid[l.rfidUid.trim().toUpperCase()]) || (l.name && studentByName[l.name.trim().toLowerCase()]);
+          const ident = (st?.identifier || '').toLowerCase();
+          return name.includes(q) || rfid.includes(q) || cls.includes(q) || ident.includes(q);
+        });
+      }
+      return logs;
+    }
+
+    async function updateRekapStats() {
+      try {
+        const [sRes, pRes, ptRes, lRes] = await Promise.all([
+          fetch('/api/students'),
+          fetch('/api/permissions'),
+          fetch('/api/points'),
+          fetch('/api/attendance'),
+        ]);
+        cachedStudents = await sRes.json().catch(() => []);
+        cachedPermits = await pRes.json().catch(() => []);
+        cachedDeductions = await ptRes.json().catch(() => []);
+        const todayLogs = await lRes.json().catch(() => []);
+
+        // Bangun kamus student berdasarkan RFID dan Nama untuk lookup cepat & filter NISN
+        studentByRfid = {};
+        studentByName = {};
+        cachedStudents.forEach((s: any) => {
+          if (s.rfidUid) studentByRfid[s.rfidUid.trim().toUpperCase()] = s;
+          if (s.name) studentByName[s.name.trim().toLowerCase()] = s;
+        });
+
+        // Fetch logs according to active filter for Riwayat & Dokumen
+        if (currentFilter === 'today') {
+          cachedLogs = todayLogs;
+        } else {
+          const aRes = await fetch(`/api/attendance/archive?filter=${currentFilter}`);
+          cachedLogs = await aRes.json().catch(() => []);
+        }
+
+        const displayLogs = getFilteredLogs();
+
+        // Tanggal Hari Ini Standar WIB (Asia/Jakarta)
+        const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
+        const approvedPermits = cachedPermits.filter(
+          (p: any) => p.status === 'Disetujui' && p.startDate <= todayStr && (p.endDate || p.startDate) >= todayStr
+        );
+        const permitStudentIds = new Set(approvedPermits.map((p: any) => p.studentId));
+
+        // 1. Perhitungan Statistik Menu 1 (Presensi Hari Ini Lengkap & Akurat)
+        const bolosLogs = todayLogs.filter((l: any) => l.status === 'Bolos');
+        const bolosUids = new Set(bolosLogs.map((l: any) => (l.rfidUid || '').trim().toUpperCase()));
+
+        // Siswa Hadir & Terlambat (tidak double-count dengan yang bolos)
+        const siswaMasuk = todayLogs.filter((l: any) => l.role !== 'guru' && l.type === 'masuk');
+        const siswaHadirTepat = siswaMasuk.filter((l: any) => l.status === 'Hadir' && !bolosUids.has((l.rfidUid || '').trim().toUpperCase())).length;
+        const siswaTerlambat = siswaMasuk.filter((l: any) => l.status === 'Terlambat' && !bolosUids.has((l.rfidUid || '').trim().toUpperCase())).length;
+
+        // Guru Hadir (guru tap 1x sehari di sesi masuk atau siang)
+        const guruLogs = todayLogs.filter((l: any) => l.role === 'guru');
+        const guruHadirUids = new Set(guruLogs.map((l: any) => (l.rfidUid || '').trim().toUpperCase()));
+        const guruHadirCount = guruHadirUids.size;
+
+        const hadir = siswaHadirTepat + guruHadirCount;
+        const terlambat = siswaTerlambat;
+        const bolos = bolosLogs.length;
+        const izin = approvedPermits.length;
+        const pulang = todayLogs.filter((l: any) => l.type === 'pulang' && l.status === 'Pulang').length;
+
+        // Seluruh civitas yang sudah tap hari ini (masuk, hadir, telat, pulang, bolos)
+        const absenUids = new Set(todayLogs.map((l: any) => (l.rfidUid || '').trim().toUpperCase()));
+
+        // Belum Absen: civitas (siswa & guru) yang belum tap sama sekali dan tidak sedang izin
+        const belum = cachedStudents.filter((s: any) => {
+          if (s.role === 'admin') return false;
+          const uid = (s.rfidUid || '').trim().toUpperCase();
+          return !absenUids.has(uid) && !permitStudentIds.has(s.id);
+        }).length;
+
+        const el = (id: string) => document.getElementById(id);
+        const set = (id: string, v: string) => { const e = el(id); if (e) e.textContent = v; };
+
+        // Bind 6 Kartu Metrik Menu 1
+        set('rekap-hadir', String(hadir));
+        set('rekap-terlambat', String(terlambat));
+        set('rekap-bolos', String(bolos));
+        set('rekap-izin', String(izin));
+        set('rekap-pulang', String(pulang));
+        set('rekap-belum', String(belum));
+        set('rekap-stat-total-badge', `${todayLogs.length} Data Tercatat`);
+
+        // Bind Metrik di Menu 3 (Riwayat Log)
+        set('rekap-log-count', `${displayLogs.length} Data`);
+        set('log-stat-count', `${displayLogs.length} Data`);
+        set('log-stat-hadir', `${hadir} Civitas`);
+        set('rekap-log-footer-text', `Menampilkan ${displayLogs.length} data presensi (${filterTitles[currentFilter] || currentFilter})`);
+
+        // Update 3 Bar Kehadiran per Jurusan & Guru Hari Ini
+        const aklTotal = cachedStudents.filter((s: any) => s.role !== 'guru' && s.className && s.className.includes('AKL'));
+        const aklHadir = aklTotal.filter((s: any) => absenUids.has((s.rfidUid || '').trim().toUpperCase()));
+        const aklPct = aklTotal.length ? Math.round((aklHadir.length / aklTotal.length) * 100) : 0;
+        set('jurusan-akl-ratio', `${aklHadir.length}/${aklTotal.length} Siswa`);
+        set('jurusan-akl-pct', `${aklPct}%`);
+        const aklBar = el('jurusan-akl-bar');
+        if (aklBar) aklBar.style.width = `${aklPct}%`;
+
+        const rplTotal = cachedStudents.filter((s: any) => s.role !== 'guru' && s.className && s.className.includes('RPL'));
+        const rplHadir = rplTotal.filter((s: any) => absenUids.has((s.rfidUid || '').trim().toUpperCase()));
+        const rplPct = rplTotal.length ? Math.round((rplHadir.length / rplTotal.length) * 100) : 0;
+        set('jurusan-rpl-ratio', `${rplHadir.length}/${rplTotal.length} Siswa`);
+        set('jurusan-rpl-pct', `${rplPct}%`);
+        const rplBar = el('jurusan-rpl-bar');
+        if (rplBar) rplBar.style.width = `${rplPct}%`;
+
+        const guruTotal = cachedStudents.filter((s: any) => s.role === 'guru');
+        const guruHadir = guruTotal.filter((s: any) => absenUids.has((s.rfidUid || '').trim().toUpperCase()));
+        const guruPct = guruTotal.length ? Math.round((guruHadir.length / guruTotal.length) * 100) : 0;
+        set('jurusan-guru-ratio', `${guruHadir.length}/${guruTotal.length} Guru`);
+        set('jurusan-guru-pct', `${guruPct}%`);
+        const guruBar = el('jurusan-guru-bar');
+        if (guruBar) guruBar.style.width = `${guruPct}%`;
+
+        let bestJurusan = 'Belum Ada Kehadiran';
+        if (aklPct > 0 || rplPct > 0 || guruPct > 0) {
+          if (aklPct >= rplPct && aklPct >= guruPct) bestJurusan = '🏆 AKL Terdepan (' + aklPct + '%)';
+          else if (rplPct >= aklPct && rplPct >= guruPct) bestJurusan = '🏆 RPL Terdepan (' + rplPct + '%)';
+          else bestJurusan = '🏆 Dewan Guru Terdepan (' + guruPct + '%)';
+        }
+        set('jurusan-top-badge', bestJurusan);
+
+        // Update Feed 5 Tap Kartu Terbaru (Langsung Ambil 5 Tap Paling Baru)
+        const recentTapsEl = el('rekap-recent-taps');
+        if (recentTapsEl) {
+          const recentLogs = todayLogs.slice(0, 5);
+          if (!recentLogs.length) {
+            recentTapsEl.innerHTML = '<div class="py-6 text-center text-slate-400 text-xs font-medium">Belum ada tap kartu RFID hari ini.</div>';
+          } else {
+            recentTapsEl.innerHTML = recentLogs.map((t: any) => {
+              const isMasuk = t.type === 'masuk';
+              const badgeColor = t.status === 'Bolos' ? 'bg-rose-100 text-rose-800'
+                : t.status === 'Terlambat' ? 'bg-amber-100 text-amber-800'
+                : t.status === 'Pulang' ? 'bg-blue-100 text-blue-800'
+                : 'bg-emerald-100 text-emerald-800';
+              return `
+                <div class="flex items-center justify-between p-2 rounded-xl bg-slate-50/80 hover:bg-slate-100/80 border border-slate-100 transition">
+                  <div class="flex items-center gap-2.5 min-w-0">
+                    <div class="w-7 h-7 rounded-lg ${isMasuk ? 'bg-blue-100 text-blue-700' : 'bg-cyan-100 text-cyan-700'} flex items-center justify-center font-bold text-xs shrink-0">
+                      ${(t.name || '?')[0].toUpperCase()}
+                    </div>
+                    <div class="min-w-0">
+                      <p class="font-bold text-slate-800 text-xs truncate leading-tight">${t.name}</p>
+                      <p class="text-[10px] text-slate-400 truncate">${t.className} • ${t.time} WIB</p>
+                    </div>
+                  </div>
+                  <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${badgeColor} shrink-0">
+                    ${t.status}
+                  </span>
+                </div>
+              `;
+            }).join('');
+          }
+        }
+
+
+        // Filter Izin berdasarkan rombel aktif
+        const filteredPermits = selectedClass === 'all'
+          ? approvedPermits
+          : (selectedClass === 'guru' ? [] : approvedPermits.filter((p: any) => p.className === selectedClass));
+
+        // Update Print Header & Stat
+        const targetLabel = selectedClass === 'all'
+          ? 'SASARAN: SEMUA ROMBEL & DEWAN GURU'
+          : (selectedClass === 'guru' ? 'SASARAN: DEWAN GURU & STAF' : `SASARAN: ROMBEL KELAS ${selectedClass.toUpperCase()}`);
+        set('print-doc-target', targetLabel);
+        set('print-stat-hadir', String(hadir));
+        set('print-stat-terlambat', String(terlambat));
+        set('print-stat-bolos', String(bolos));
+        set('print-stat-izin', String(filteredPermits.length));
+        set('print-stat-pulang', String(pulang));
+        set('print-stat-belum', String(belum));
+
+        // Ambil Data Pejabat Pengesah Dinamis dari Database Civitas
+        const kepsekCivitas = cachedStudents.find((s: any) => 
+          s.tag === 'kepsek' || 
+          (s.className && s.className.toLowerCase().includes('kepala sekolah')) ||
+          (s.name && s.name.toLowerCase().includes('ahmad fauzi'))
+        );
+        const wakaCivitas = cachedStudents.find((s: any) => 
+          s.tag === 'waka' || 
+          (s.className && (s.className.toLowerCase().includes('kesiswaan') || s.className.toLowerCase().includes('waka'))) ||
+          (s.name && s.name.toLowerCase().includes('wahyu hidayat'))
+        );
+
+        const kepsekName = kepsekCivitas?.name || 'H. Ahmad Fauzi, S.Pd., M.M.';
+        const kepsekNipRaw = kepsekCivitas?.identifier || '197805122005011008';
+        const kepsekNip = kepsekNipRaw.startsWith('NIP') ? kepsekNipRaw : `NIP. ${kepsekNipRaw}`;
+
+        const wakaName = wakaCivitas?.name || 'Wahyu Hidayat, M.Kom';
+        const wakaNipRaw = wakaCivitas?.identifier || '198403152009021003';
+        const wakaNip = wakaNipRaw.startsWith('NIP') ? wakaNipRaw : `NIP. ${wakaNipRaw}`;
+
+        // Pasang ke Layar Pratinjau Pejabat Menu 2
+        set('screen-kepsek-name', kepsekName);
+        set('screen-kepsek-nip', `Kepala Sekolah • ${kepsekNip}`);
+        set('screen-waka-name', wakaName);
+        set('screen-waka-nip', `Waka Kesiswaan • ${wakaNip}`);
+
+        // Pasang ke Lembar Cetak Dokumen Resmi
+        set('print-kepsek-name', kepsekName);
+        set('print-kepsek-nip', kepsekNip);
+        set('print-waka-name', wakaName);
+        set('print-waka-nip', wakaNip);
+
+        const tbody = el('rekap-log-body');
+        if (!tbody) return;
+        if (!displayLogs.length) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="6" class="py-14 text-center">
+                <div class="max-w-xs mx-auto flex flex-col items-center justify-center space-y-2">
+                  <div class="w-12 h-12 rounded-2xl bg-slate-100 border border-slate-200/80 flex items-center justify-center text-slate-400 mb-1">
+                    <span class="material-symbols-outlined text-2xl">history_toggle_off</span>
+                  </div>
+                  <p class="text-sm font-bold text-slate-800">Belum Ada Riwayat</p>
+                  <p class="text-xs text-slate-400 leading-relaxed">Belum ada catatan presensi pada filter ini. Lakukan tap kartu atau coba simulator IoT.</p>
+                  <div class="flex items-center gap-2 mt-2">
+                    <button type="button" onclick="document.querySelector('[data-target=\'sec-otomatisasi\']')?.click()" class="px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs border border-blue-200 inline-flex items-center gap-1.5 transition active:scale-95 cursor-pointer">
+                      <span class="material-symbols-outlined text-sm">tune</span>
+                      <span>Pusat Otomatisasi</span>
+                    </button>
+                    <a href="/" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs border border-slate-200 inline-flex items-center gap-1.5 transition">
+                      <span class="material-symbols-outlined text-sm">contactless</span>
+                      <span>Beranda Tap</span>
+                    </a>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          `;
+          return;
+        }
+
+        tbody.innerHTML = displayLogs.map((l: any) => {
+          const st = (l.rfidUid && studentByRfid[l.rfidUid.trim().toUpperCase()]) || (l.name && studentByName[l.name.trim().toLowerCase()]);
+          const nisn = st?.identifier || (l.role === 'guru' ? 'NIP Guru' : 'NISN. -');
+          const pts = getStudentPoints(l.rfidUid, st?.id, l.role);
+
+          const bc = l.status === 'Bolos' ? 'bg-rose-100 text-rose-900 border-rose-300'
+            : l.status === 'Terlambat' ? 'bg-amber-100 text-amber-900 border-amber-300'
+            : l.status === 'Pulang' ? 'bg-blue-100 text-blue-800 border-blue-300'
+            : 'bg-emerald-100 text-emerald-900 border-emerald-300';
+          const badgeText = l.status === 'Bolos' ? 'Bolos (-10P)' : l.status;
+
+          let pointBadge = `<span class="inline-flex items-center gap-1 font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-md text-[11px]">${pts} Poin</span>`;
+          if (l.role === 'guru') {
+            pointBadge = `<span class="text-slate-500 font-semibold text-[11px]">Pendidik</span>`;
+          } else if (pts === 0) {
+            pointBadge = `<span class="inline-flex items-center gap-1 font-bold text-rose-800 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md text-[11px]">🚫 0 Poin</span>`;
+          } else if (pts < 10) {
+            pointBadge = `<span class="inline-flex items-center gap-1 font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md text-[11px]">⚠️ ${pts} Poin</span>`;
+          }
+
+          const isGuru = l.role === 'guru';
+          const avatarColor = isGuru ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-700';
+
+          return `<tr class="odd:bg-white even:bg-slate-50/70 hover:bg-blue-50/60 transition-colors">
+            <td class="py-3 px-5">
+              <div class="flex items-center gap-2.5">
+                <div class="w-7 h-7 rounded-lg ${avatarColor} flex items-center justify-center font-bold text-xs shrink-0">
+                  ${(l.name || '?')[0].toUpperCase()}
+                </div>
+                <div class="min-w-0">
+                  <p class="font-bold text-slate-900 text-xs truncate">${l.name}</p>
+                  <p class="font-mono text-[10px] text-slate-400">${nisn}</p>
+                </div>
+              </div>
+            </td>
+            <td class="py-3 px-4">
+              <span class="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-slate-700 text-[11px] font-bold">${l.className}</span>
+            </td>
+            <td class="py-3 px-4 font-mono text-slate-500 text-xs">${l.date}</td>
+            <td class="py-3 px-4">
+              <span class="capitalize font-semibold text-slate-800 text-xs">${l.type}</span>
+              <span class="text-slate-400 text-[11px] font-mono">(${l.time})</span>
+            </td>
+            <td class="py-3 px-4">
+              <span class="inline-flex items-center gap-1 text-[11px] font-bold ${bc} border px-2.5 py-0.5 rounded-full">${badgeText}</span>
+            </td>
+            <td class="py-3 px-4">${pointBadge}</td>
+          </tr>`;
+        }).join('');
+      } catch (e) { console.error(e); }
+    }
+
+    // 1. Ekspor CSV / Excel Terfilter
+    function downloadExcelCSV() {
+      const logs = getFilteredLogs();
+      if (!logs || !logs.length) {
+        alert('Belum ada data presensi pada rombel/filter ini untuk diekspor.');
+        return;
+      }
+      const today = new Date().toISOString().split('T')[0];
+      const studentByRfid: Record<string, any> = {};
+      const studentByName: Record<string, any> = {};
+      cachedStudents.forEach((s: any) => {
+        if (s.rfidUid) studentByRfid[s.rfidUid.trim().toUpperCase()] = s;
+        if (s.name) studentByName[s.name.trim().toLowerCase()] = s;
+      });
+
+      let csv = 'No,NISN/NIP,Nama Civitas,Kelas / Rombel,Peran,Sisa Poin Disiplin,Tanggal,Sesi Presensi,Waktu Presensi,Status Kehadiran,Nomor RFID\r\n';
+      logs.forEach((l, idx) => {
+        const st = (l.rfidUid && studentByRfid[l.rfidUid.trim().toUpperCase()]) || (l.name && studentByName[l.name.trim().toLowerCase()]);
+        const nisn = st?.identifier || (l.role === 'guru' ? 'NIP' : 'NISN');
+        const pts = getStudentPoints(l.rfidUid, st?.id, l.role);
+        csv += `"${idx + 1}","${nisn}","${l.name}","${l.className}","${l.role}","${l.role === 'guru' ? 'Pendidik' : pts + ' Poin'}","${l.date}","${l.type}","${l.time} WIB","${l.status}","${l.rfidUid}"\r\n`;
+      });
+
+      const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const classSlug = selectedClass === 'all' ? 'Semua_Rombel' : selectedClass.replace(/\s+/g, '_');
+      a.download = `Rekap_Presensi_SMK_Maarif_${classSlug}_${currentFilter}_${today}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // === 2. GENERATOR DOKUMEN RESMI (STEP-BY-STEP & UNDUH PDF) ===
+    let genDept: 'all' | 'akl' | 'rpl' | 'guru' = 'all';
+    let genClass: string = 'all';
+    let genTime: 'today' | 'week' | 'month' | 'all' = 'today';
+
+    const classOptionsByDept: Record<string, { label: string; value: string }[]> = {
+      all: [
+        { label: 'Semua Kelas & Seluruh Civitas', value: 'all' },
+        { label: 'X RPL', value: 'X RPL' },
+        { label: 'XI RPL', value: 'XI RPL' },
+        { label: 'XII RPL', value: 'XII RPL' },
+        { label: 'X AKL', value: 'X AKL' },
+        { label: 'XI AKL', value: 'XI AKL' },
+        { label: 'XII AKL', value: 'XII AKL' },
+        { label: 'Dewan Guru & Staf', value: 'guru' },
+      ],
+      rpl: [
+        { label: 'Semua Kelas RPL (X, XI, XII)', value: 'all' },
+        { label: 'X RPL', value: 'X RPL' },
+        { label: 'XI RPL', value: 'XI RPL' },
+        { label: 'XII RPL', value: 'XII RPL' },
+      ],
+      akl: [
+        { label: 'Semua Kelas AKL (X, XI, XII)', value: 'all' },
+        { label: 'X AKL', value: 'X AKL' },
+        { label: 'XI AKL', value: 'XI AKL' },
+        { label: 'XII AKL', value: 'XII AKL' },
+      ],
+      guru: [
+        { label: 'Seluruh Dewan Guru & Staf Pengajar', value: 'guru' },
+      ],
+    };
+
+    function updateGeneratorClasses() {
+      const select = document.getElementById('gen-class-select') as HTMLSelectElement | null;
+      if (!select) return;
+      const opts = classOptionsByDept[genDept] || classOptionsByDept.all;
+      select.innerHTML = opts.map((o) => `<option value="${o.value}">${o.label}</option>`).join('');
+      genClass = select.value || 'all';
+    }
+
+    async function prepareOfficialDocument() {
+      // 1. Ambil rekaman logs sesuai periode
+      let activeLogs: any[] = [];
+      if (genTime === 'today') {
+        activeLogs = cachedLogs;
+      } else {
+        try {
+          const res = await fetch(`/api/attendance/archive?filter=${genTime}`);
+          activeLogs = await res.json().catch(() => []);
+        } catch {
+          activeLogs = cachedLogs;
+        }
+      }
+
+      // 2. Filter berdasarkan Jurusan
+      let filtered = [...activeLogs];
+      if (genDept === 'rpl') {
+        filtered = filtered.filter((l: any) => l.role !== 'guru' && l.className && l.className.includes('RPL'));
+      } else if (genDept === 'akl') {
+        filtered = filtered.filter((l: any) => l.role !== 'guru' && l.className && l.className.includes('AKL'));
+      } else if (genDept === 'guru') {
+        filtered = filtered.filter((l: any) => l.role === 'guru');
+      }
+
+      // 3. Filter berdasarkan Kelas
+      if (genClass !== 'all') {
+        if (genClass === 'guru') {
+          filtered = filtered.filter((l: any) => l.role === 'guru');
+        } else {
+          filtered = filtered.filter((l: any) => l.className === genClass);
+        }
+      }
+
+      // Lookup student cepat
+      const studentByRfid: Record<string, any> = {};
+      const studentByName: Record<string, any> = {};
+      cachedStudents.forEach((s: any) => {
+        if (s.rfidUid) studentByRfid[s.rfidUid.trim().toUpperCase()] = s;
+        if (s.name) studentByName[s.name.trim().toLowerCase()] = s;
+      });
+
+      // 4. Sertakan surat izin sah jika filter hari ini
+      if (genTime === 'today') {
+        const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
+        const todayPermits = cachedPermits.filter(
+          (p: any) => p.status === 'Disetujui' && p.startDate <= todayStr && (p.endDate || p.startDate) >= todayStr
+        );
+        todayPermits.forEach((p: any) => {
+          let matchDept = true;
+          if (genDept === 'rpl') matchDept = p.className && p.className.includes('RPL');
+          if (genDept === 'akl') matchDept = p.className && p.className.includes('AKL');
+          if (genDept === 'guru') matchDept = false;
+
+          let matchClass = true;
+          if (genClass !== 'all' && genClass !== 'guru') matchClass = p.className === genClass;
+
+          if (matchDept && matchClass) {
+            const alreadyInLog = filtered.some((l: any) => l.name === p.name);
+            if (!alreadyInLog) {
+              filtered.push({
+                id: p.id,
+                name: p.name,
+                className: p.className,
+                role: 'siswa',
+                type: 'izin',
+                time: p.createdAt ? p.createdAt.split('T')[1]?.slice(0, 5) || '07:00' : '07:00',
+                status: p.type || 'Izin',
+                isPermit: true,
+                reason: p.reason
+              });
+            }
+          }
+        });
+      }
+
+      // 5. Perhitungan Statistik Kehadiran
+      const hadirCount = filtered.filter((l: any) => l.status === 'Hadir').length;
+      const telatCount = filtered.filter((l: any) => l.status === 'Terlambat').length;
+      const bolosCount = filtered.filter((l: any) => l.status === 'Bolos').length;
+      const izinCount = filtered.filter((l: any) => l.status === 'Izin' || l.status === 'Sakit' || l.isPermit).length;
+      const pulangCount = filtered.filter((l: any) => l.type === 'pulang').length;
+
+      // Hitung civitas terdaftar untuk angka belum absen
+      let targetCivitas = cachedStudents.filter((s: any) => s.role !== 'admin');
+      if (genDept === 'rpl') targetCivitas = targetCivitas.filter((s: any) => s.role !== 'guru' && s.className && s.className.includes('RPL'));
+      if (genDept === 'akl') targetCivitas = targetCivitas.filter((s: any) => s.role !== 'guru' && s.className && s.className.includes('AKL'));
+      if (genDept === 'guru') targetCivitas = targetCivitas.filter((s: any) => s.role === 'guru');
+      if (genClass !== 'all') {
+        if (genClass === 'guru') targetCivitas = targetCivitas.filter((s: any) => s.role === 'guru');
+        else targetCivitas = targetCivitas.filter((s: any) => s.className === genClass);
+      }
+      const loggedNames = new Set(filtered.map((l: any) => l.name));
+      const belumCount = Math.max(0, targetCivitas.filter((s: any) => !loggedNames.has(s.name)).length);
+
+      // Hitung Rekomendasi 1 (Poin Disiplin BK)
+      let sempurnaCount = 0;
+      let sp1Count = 0;
+      let sp2Count = 0;
+      targetCivitas.forEach((s: any) => {
+        if (s.role === 'guru') return;
+        const pts = getStudentPoints(s.rfidUid, s.id, s.role);
+        if (pts >= 100) sempurnaCount++;
+        else if (pts >= 75) sp1Count++;
+        else sp2Count++;
+      });
+
+      // Update Angka Statistik Lembar Cetak
+      const statHadir = document.getElementById('print-stat-hadir');
+      const statTelat = document.getElementById('print-stat-terlambat');
+      const statBolos = document.getElementById('print-stat-bolos');
+      const statIzin = document.getElementById('print-stat-izin');
+      const statPulang = document.getElementById('print-stat-pulang');
+      const statBelum = document.getElementById('print-stat-belum');
+      if (statHadir) statHadir.textContent = String(hadirCount);
+      if (statTelat) statTelat.textContent = String(telatCount);
+      if (statBolos) statBolos.textContent = String(bolosCount);
+      if (statIzin) statIzin.textContent = String(izinCount);
+      if (statPulang) statPulang.textContent = String(pulangCount);
+      if (statBelum) statBelum.textContent = String(belumCount);
+
+      // Update Rekomendasi 1: Mini-Ringkasan Disiplin BK
+      const statDisiplinSempurna = document.getElementById('print-stat-disiplin-sempurna');
+      const statDisiplinSp1 = document.getElementById('print-stat-disiplin-sp1');
+      const statDisiplinSp2 = document.getElementById('print-stat-disiplin-sp2');
+      if (statDisiplinSempurna) statDisiplinSempurna.textContent = `${sempurnaCount} Siswa`;
+      if (statDisiplinSp1) statDisiplinSp1.textContent = `${sp1Count} Siswa`;
+      if (statDisiplinSp2) statDisiplinSp2.textContent = `${sp2Count} Siswa`;
+
+      // Header Dokumen Lembar Cetak
+      const now = new Date();
+      const options: Intl.DateTimeFormatOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+      const dateStr = now.toLocaleDateString('id-ID', options);
+      const docDateEl = document.getElementById('print-doc-date');
+      const signDateEl = document.getElementById('print-sign-date');
+      if (docDateEl) docDateEl.textContent = dateStr;
+      if (signDateEl) signDateEl.textContent = now.toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' });
+
+      const deptLabel = genDept === 'all' ? 'SEMUA JURUSAN' : (genDept === 'guru' ? 'DEWAN GURU' : `JURUSAN ${genDept.toUpperCase()}`);
+      const classLabel = genClass === 'all' ? 'SEMUA KELAS' : genClass.toUpperCase();
+      const timeLabel = genTime === 'today' ? 'HARI INI' : (genTime === 'week' ? '7 HARI TERAKHIR' : (genTime === 'month' ? 'BULAN INI' : 'SEMUA ARSIP'));
+
+      const targetEl = document.getElementById('print-doc-target');
+      if (targetEl) targetEl.textContent = `SASARAN: ${deptLabel} (${classLabel}) • PERIODE: ${timeLabel}`;
+
+      const titleEl = document.getElementById('print-doc-title');
+      if (titleEl) titleEl.textContent = `BERITA ACARA REKAPITULASI PRESENSI & KEDISIPLINAN SISWA`;
+
+      const tableTitleEl = document.getElementById('print-table-title');
+      if (tableTitleEl) tableTitleEl.textContent = `Rincian Presensi & Sisa Poin Disiplin (${filtered.length} Data):`;
+
+      // Pejabat Pengesah Dinamis
+      const kepsekCivitas = cachedStudents.find((s: any) => 
+        s.tag === 'kepsek' || 
+        (s.className && s.className.toLowerCase().includes('kepala sekolah')) ||
+        (s.name && s.name.toLowerCase().includes('ahmad fauzi'))
+      );
+      const wakaCivitas = cachedStudents.find((s: any) => 
+        s.tag === 'waka' || 
+        (s.className && (s.className.toLowerCase().includes('kesiswaan') || s.className.toLowerCase().includes('waka'))) ||
+        (s.name && s.name.toLowerCase().includes('wahyu hidayat'))
+      );
+      const kName = kepsekCivitas?.name || 'H. Ahmad Fauzi, S.Pd., M.M.';
+      const kNip = kepsekCivitas?.identifier?.startsWith('NIP') ? kepsekCivitas.identifier : `NIP. ${kepsekCivitas?.identifier || '197805122005011008'}`;
+      const wName = wakaCivitas?.name || 'Wahyu Hidayat, M.Kom';
+      const wNip = wakaCivitas?.identifier?.startsWith('NIP') ? wakaCivitas.identifier : `NIP. ${wakaCivitas?.identifier || '198403152009021003'}`;
+
+      const printKepsekName = document.getElementById('print-kepsek-name');
+      const printKepsekNip = document.getElementById('print-kepsek-nip');
+      const printWakaName = document.getElementById('print-waka-name');
+      const printWakaNip = document.getElementById('print-waka-nip');
+      if (printKepsekName) printKepsekName.textContent = kName;
+      if (printKepsekNip) printKepsekNip.textContent = kNip;
+      if (printWakaName) printWakaName.textContent = wName;
+      if (printWakaNip) printWakaNip.textContent = wNip;
+
+      // 6. Buat Baris Tabel dengan Kolom Poin Disiplin (Rekomendasi 1)
+      let rowsHtml = '';
+      if (!filtered.length) {
+        rowsHtml = '<tr><td colspan="9" class="py-4 text-center italic text-slate-500">Tidak ada rekaman presensi pada filter kriteria ini.</td></tr>';
+      } else {
+        rowsHtml = filtered.map((l: any, idx: number) => {
+          const st = (l.rfidUid && studentByRfid[l.rfidUid.trim().toUpperCase()]) || (l.name && studentByName[l.name.trim().toLowerCase()]);
+          const nisn = st?.identifier || (l.role === 'guru' ? 'NIP Guru' : '-');
+          const pts = getStudentPoints(l.rfidUid, st?.id, l.role);
+          let ptsText = '';
+          if (l.role === 'guru') {
+            ptsText = 'Pendidik';
+          } else if (pts >= 100) {
+            ptsText = '100 Poin (Tertib)';
+          } else if (pts >= 75) {
+            ptsText = `${pts} Poin (SP-1)`;
+          } else {
+            ptsText = `${pts} Poin (SP-2)`;
+          }
+
+          return `
+            <tr class="border-b border-black text-[11px]">
+              <td class="py-1.5 px-1 text-center border-r border-black">${idx + 1}</td>
+              <td class="py-1.5 px-2 font-mono text-center border-r border-black">${nisn}</td>
+              <td class="py-1.5 px-3 font-bold border-r border-black">${l.name}</td>
+              <td class="py-1.5 px-2 border-r border-black">${l.className || '-'}</td>
+              <td class="py-1.5 px-2 text-center capitalize border-r border-black">${l.type || 'masuk'}</td>
+              <td class="py-1.5 px-2 text-center font-mono border-r border-black">${l.time || '-'}</td>
+              <td class="py-1.5 px-2 font-semibold border-r border-black">${l.status === 'Bolos' ? 'Bolos (-10P)' : (l.status || 'Hadir')}</td>
+              <td class="py-1.5 px-2 font-mono text-center font-bold border-r border-black ${pts < 75 ? 'text-rose-700' : ''}">${ptsText}</td>
+              <td class="py-1.5 px-2 text-center text-[10px] text-slate-600">${l.isPermit ? '✓ Surat Izin' : '✓ Sah Sistem'}</td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      const printTbody = document.getElementById('print-table-body');
+      if (printTbody) printTbody.innerHTML = rowsHtml;
+
+      return { 
+        filtered, 
+        hadirCount, 
+        telatCount, 
+        bolosCount, 
+        izinCount, 
+        pulangCount, 
+        belumCount,
+        sempurnaCount,
+        sp1Count,
+        sp2Count,
+        kName,
+        kNip,
+        wName,
+        wNip,
+        dateStr,
+        deptLabel,
+        classLabel,
+        timeLabel
+      };
+    }
+
+    // Unduh Langsung Berkas PDF Vektor Menggunakan jsPDF + autoTable (Cepat & Anti Macet)
+    async function generateAndDownloadPDF() {
+      const btn = document.getElementById('btn-gen-download-pdf') as HTMLButtonElement | null;
+      const modalBtn = document.getElementById('modal-btn-download') as HTMLButtonElement | null;
+      const origContent = btn ? btn.innerHTML : '';
+      const origModalContent = modalBtn ? modalBtn.innerHTML : '';
+
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="material-symbols-outlined text-sm animate-spin">sync</span><span>Menyusun PDF...</span>';
+      }
+      if (modalBtn) {
+        modalBtn.disabled = true;
+        modalBtn.innerHTML = '<span class="material-symbols-outlined text-sm animate-spin">sync</span><span>Menyusun PDF...</span>';
+      }
+
+      try {
+        const jsPdfLib = (window as any).jspdf?.jsPDF || (window as any).jsPDF;
+        if (!jsPdfLib) {
+          alert('Pustaka pembuat PDF sedang dimuat, silakan coba sesaat lagi.');
+          return;
+        }
+
+        const docData = await prepareOfficialDocument();
+        const {
+          filtered,
+          hadirCount,
+          telatCount,
+          bolosCount,
+          izinCount,
+          sempurnaCount,
+          sp1Count,
+          sp2Count,
+          kName,
+          kNip,
+          wName,
+          wNip,
+          dateStr,
+          deptLabel,
+          classLabel,
+          timeLabel
+        } = docData;
+
+        const doc = new jsPdfLib({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+        const runAutoTable = (options: any) => {
+          if (typeof (doc as any).autoTable === 'function') {
+            (doc as any).autoTable(options);
+          } else if (typeof (window as any).jspdf?.autoTable === 'function') {
+            (window as any).jspdf.autoTable(doc, options);
+          } else if (typeof (window as any).autoTable === 'function') {
+            (window as any).autoTable(doc, options);
+          }
+        };
+
+        // Kop Surat Resmi
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.text("LEMBAGA PENDIDIKAN MA'ARIF NU LAMPUNG TENGAH", 105, 14, { align: 'center' });
+        doc.setFontSize(14);
+        doc.text("SMK MA'ARIF PADANG RATU", 105, 20, { align: 'center' });
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.text('Status Terakreditasi | NSS: 322120205001 | NPSN: 10802050', 105, 25, { align: 'center' });
+        doc.text('Alamat: Jl. Raya Padang Ratu No. 01, Kec. Padang Ratu, Kab. Lampung Tengah, Kode Pos 34176', 105, 29, { align: 'center' });
+        doc.text('Website: smkmaarifpadangratu.sch.id | Email: smkmaarifpadangratu@gmail.com', 105, 33, { align: 'center' });
+        doc.setLineWidth(0.8);
+        doc.line(14, 36, 196, 36);
+        doc.setLineWidth(0.2);
+        doc.line(14, 37.2, 196, 37.2);
+
+        // Judul & Parameter Filter
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.text('BERITA ACARA REKAPITULASI PRESENSI & KEDISIPLINAN SISWA', 105, 44, { align: 'center' });
+        doc.setFontSize(8.5);
+        doc.text(`SASARAN: ${deptLabel} (${classLabel}) • PERIODE: ${timeLabel}`, 105, 49, { align: 'center' });
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Nomor: 421.5/091/SMK-MR/2026 • Hari/Tanggal: ${dateStr}`, 105, 53, { align: 'center' });
+
+        // Mini-Ringkasan Disiplin BK & Kehadiran Table
+        runAutoTable({
+          startY: 56,
+          margin: { left: 14, right: 14 },
+          theme: 'grid',
+          styles: { fontSize: 7.5, cellPadding: 2, halign: 'center' },
+          headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' },
+          head: [
+            ['Hadir', 'Terlambat', 'Bolos/Alpha', 'Izin/Sakit', 'Tertib (100P)', 'SP-1 (75-99P)', 'SP-2 (<75P)']
+          ],
+          body: [
+            [
+              String(hadirCount),
+              String(telatCount),
+              String(bolosCount),
+              String(izinCount),
+              `${sempurnaCount} Siswa`,
+              `${sp1Count} Siswa`,
+              `${sp2Count} Siswa`
+            ]
+          ]
+        });
+
+        // Detail Table Title
+        const tableStartY = (doc as any).lastAutoTable?.finalY ? (doc as any).lastAutoTable.finalY + 5 : 68;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8.5);
+        doc.text(`Rincian Presensi & Sisa Poin Disiplin (${filtered.length} Data):`, 14, tableStartY);
+
+        // Map Rows for Table
+        const tableBody = filtered.length ? filtered.map((l: any, idx: number) => {
+          const st = (l.rfidUid && studentByRfid[l.rfidUid.trim().toUpperCase()]) || (l.name && studentByName[l.name.trim().toLowerCase()]);
+          const nisn = st?.identifier || (l.role === 'guru' ? 'NIP Guru' : '-');
+          const pts = getStudentPoints(l.rfidUid, st?.id, l.role);
+          let ptsText = '';
+          if (l.role === 'guru') {
+            ptsText = 'Pendidik';
+          } else if (pts >= 100) {
+            ptsText = '100 P (Tertib)';
+          } else if (pts >= 75) {
+            ptsText = `${pts} P (SP-1)`;
+          } else {
+            ptsText = `${pts} P (SP-2)`;
+          }
+
+          const statusText = l.status === 'Bolos' ? 'Bolos (-10P)' : (l.status || 'Hadir');
+          const parafText = l.isPermit ? 'Surat Izin' : 'Sah Sistem';
+
+          return [
+            String(idx + 1),
+            String(nisn),
+            String(l.name || '-'),
+            String(l.className || '-'),
+            String(l.type || 'masuk'),
+            String(l.time || '-'),
+            statusText,
+            ptsText,
+            parafText
+          ];
+        }) : [
+          ['-', '-', 'Tidak ada rekaman presensi pada filter kriteria ini.', '-', '-', '-', '-', '-', '-']
+        ];
+
+        runAutoTable({
+          startY: tableStartY + 2,
+          margin: { left: 14, right: 14 },
+          theme: 'grid',
+          styles: { fontSize: 7.5, cellPadding: 1.8 },
+          headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
+          columnStyles: {
+            0: { cellWidth: 8, halign: 'center' },
+            1: { cellWidth: 24, halign: 'center' },
+            2: { cellWidth: 42 },
+            3: { cellWidth: 20, halign: 'center' },
+            4: { cellWidth: 15, halign: 'center' },
+            5: { cellWidth: 16, halign: 'center' },
+            6: { cellWidth: 19, halign: 'center' },
+            7: { cellWidth: 24, halign: 'center' },
+            8: { cellWidth: 14, halign: 'center' }
+          },
+          head: [
+            ['No', 'NISN', 'Nama Siswa', 'Kelas', 'Sesi', 'Jam', 'Status', 'Sisa Poin', 'Paraf']
+          ],
+          body: tableBody
+        });
+
+        // Signatures
+        let sigY = (doc as any).lastAutoTable?.finalY ? (doc as any).lastAutoTable.finalY + 10 : 220;
+        if (sigY > 245) {
+          doc.addPage();
+          sigY = 25;
+        }
+
+        const now = new Date();
+        const signDateStr = now.toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' });
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8.5);
+        doc.text(`Padang Ratu, ${signDateStr}`, 140, sigY);
+        doc.text('Mengetahui,', 20, sigY + 5);
+        doc.text('Kepala SMK Ma\'arif Padang Ratu', 140, sigY + 5);
+        doc.text('Waka Bidang Kesiswaan', 20, sigY + 9);
+
+        doc.setFont('helvetica', 'bold');
+        doc.text(wName, 20, sigY + 28);
+        doc.setFont('helvetica', 'normal');
+        doc.text(wNip, 20, sigY + 32);
+
+        doc.setFont('helvetica', 'bold');
+        doc.text(kName, 140, sigY + 28);
+        doc.setFont('helvetica', 'normal');
+        doc.text(kNip, 140, sigY + 32);
+
+        // Simpan Berkas PDF Vektor
+        const deptSlug = genDept.toUpperCase();
+        const classSlug = genClass === 'all' ? 'Semua_Kelas' : genClass.replace(/\s+/g, '_');
+        const timeSlug = genTime.toUpperCase();
+        const todayStr = new Date().toISOString().split('T')[0];
+        const filename = `Laporan_Presensi_SMK_Maarif_${deptSlug}_${classSlug}_${timeSlug}_${todayStr}.pdf`;
+
+        doc.save(filename);
+
+        if (typeof (window as any).showToast === 'function') {
+          (window as any).showToast('File PDF resmi berhasil diunduh langsung!', 'success');
+        }
+      } catch (err: any) {
+        console.error('PDF Generation Error:', err);
+        alert('Gagal menyusun PDF: ' + (err?.message || err));
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = origContent;
+        }
+        if (modalBtn) {
+          modalBtn.disabled = false;
+          modalBtn.innerHTML = origModalContent;
+        }
+      }
+    }
+
+    // Buka Modal Pratinjau Dokumen A4 di Layar
+    async function openDocumentPreviewModal() {
+      await prepareOfficialDocument();
+      const printEl = document.getElementById('print-area');
+      const container = document.getElementById('modal-paper-container');
+      const modal = document.getElementById('modal-print-preview');
+      if (printEl && container && modal) {
+        container.innerHTML = printEl.innerHTML;
+        modal.classList.remove('hidden');
+      }
+    }
+
+    function closeDocumentPreviewModal() {
+      const modal = document.getElementById('modal-print-preview');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    // Salin Ringkasan Sesuai Filter Generator ke WhatsApp
+    async function copyGeneratedWhatsApp() {
+      const { filtered, hadirCount, telatCount, bolosCount, izinCount, pulangCount, belumCount } = await prepareOfficialDocument();
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      const deptLabel = genDept === 'all' ? 'Semua Jurusan (AKL & RPL)' : (genDept === 'guru' ? 'Dewan Guru' : `Jurusan ${genDept.toUpperCase()}`);
+      const classLabel = genClass === 'all' ? 'Semua Kelas' : genClass;
+
+      const text = `*LAPORAN PRESENSI & KEDISIPLINAN RESMI SMK MA'ARIF PADANG RATU*
+🎯 Sasaran: *${deptLabel} (${classLabel})*
+📅 Tanggal: ${dateStr}
+
+📊 *Ringkasan Kehadiran:*
+• Hadir Tepat Waktu : ${hadirCount} orang
+• Terlambat         : ${telatCount} orang
+• Bolos (-10 Poin)  : ${bolosCount} orang
+• Izin / Dispensasi : ${izinCount} orang
+• Sudah Pulang      : ${pulangCount} orang
+• Belum Absen       : ${belumCount} orang
+
+⭐ *Kedisiplinan & Poin:* Disertakan otomatis di berkas PDF resmi.
+Total Log Presensi: ${filtered.length} data.
+_Dokumen resmi sah sistem presensi terintegrasi SI-HADIR IoT._`;
+
+      if (navigator && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        navigator.clipboard.writeText(text).then(() => {
+          if (typeof (window as any).showToast === 'function') {
+            (window as any).showToast('Ringkasan WA berhasil disalin ke clipboard!', 'success');
+          } else {
+            alert('Ringkasan laporan presensi berhasil disalin!');
+          }
+        }).catch(() => {
+          prompt('Salin teks laporan berikut:', text);
+        });
+      } else {
+        prompt('Salin teks laporan berikut:', text);
+      }
+    }
+
+    // 3. Salin Ringkasan WhatsApp
+    function copyWhatsAppSummary() {
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+      const hadir = document.getElementById('rekap-hadir')?.textContent || '0';
+      const terlambat = document.getElementById('rekap-terlambat')?.textContent || '0';
+      const bolos = document.getElementById('rekap-bolos')?.textContent || '0';
+      const izin = document.getElementById('rekap-izin')?.textContent || '0';
+      const pulang = document.getElementById('rekap-pulang')?.textContent || '0';
+      const belum = document.getElementById('rekap-belum')?.textContent || '0';
+
+      const rombelLabel = selectedClass === 'all' ? 'Semua Rombel & Guru' : (selectedClass === 'guru' ? 'Dewan Guru & Staf' : selectedClass);
+
+      const text = `*LAPORAN PRESENSI RESMI SMK MA'ARIF PADANG RATU*
+🎯 Sasaran Rombel: *${rombelLabel}*
+📅 Tanggal: ${dateStr}
+
+📊 *Ringkasan Kehadiran:*
+• Hadir Tepat Waktu : ${hadir} orang
+• Terlambat         : ${terlambat} orang
+• Bolos (-10 Poin)  : ${bolos} orang
+• Izin / Dispensasi : ${izin} orang
+• Sudah Pulang      : ${pulang} orang
+• Belum Absen       : ${belum} orang
+
+Total Log Presensi: ${getFilteredLogs().length} data (${filterTitles[currentFilter] || currentFilter}).
+_Laporan otomatis terverifikasi sistem SI-HADIR IoT & Turso Cloud._`;
+
+      if (navigator && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        navigator.clipboard.writeText(text).then(() => {
+          if (typeof (window as any).showToast === 'function') {
+            (window as any).showToast('Ringkasan WA berhasil disalin ke clipboard!', 'success');
+          } else {
+            alert('Ringkasan laporan presensi berhasil disalin! Anda bisa langsung menempelkannya (Paste) ke WhatsApp.');
+          }
+        }).catch(() => {
+          prompt('Salin teks laporan berikut untuk WhatsApp:', text);
+        });
+      } else {
+        prompt('Salin teks laporan berikut untuk WhatsApp:', text);
+      }
+    }
+
+    // Listener Filter Search Realtime (Debounce 120ms untuk responsivitas optimal)
+    let searchDebounceTimer: any = null;
+    document.getElementById('filter-search')?.addEventListener('input', (e) => {
+      searchQuery = (e.target as HTMLInputElement).value;
+      clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = setTimeout(() => {
+        updateRekapStats();
+      }, 120);
+    });
+
+    // Listener Filter Rombel
+    document.getElementById('filter-rombel')?.addEventListener('change', (e) => {
+      selectedClass = (e.target as HTMLSelectElement).value;
+      updateRekapStats();
+    });
+
+    // Filter Buttons Switcher Periode
+    document.querySelectorAll('.filter-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const target = e.currentTarget as HTMLButtonElement;
+        const filter = target.getAttribute('data-filter') as any;
+        if (!filter) return;
+        currentFilter = filter;
+
+        // UI styling
+        document.querySelectorAll('.filter-btn').forEach((b) => {
+          b.classList.remove('active', 'bg-white', 'text-blue-700', 'shadow-xs', 'font-bold');
+          b.classList.add('text-slate-600', 'font-medium');
+        });
+        target.classList.add('active', 'bg-white', 'text-blue-700', 'shadow-xs', 'font-bold');
+        target.classList.remove('text-slate-600', 'font-medium');
+
+        const titleEl = document.getElementById('rekap-table-title');
+        if (titleEl) titleEl.textContent = filterTitles[filter] || 'Riwayat Presensi';
+
+        updateRekapStats();
+      });
+    });
+
+    // Pengukuran Latensi Cloud Riil
+    async function measureLatency() {
+      const t0 = performance.now();
+      try {
+        await fetch('/api/settings');
+        const lat = Math.round(performance.now() - t0);
+        const el = document.getElementById('cloud-latency-val');
+        if (el) el.textContent = `${lat} ms (SG Cloud)`;
+      } catch {
+        const el = document.getElementById('cloud-latency-val');
+        if (el) el.textContent = 'Aktif (SG)';
+      }
+    }
+
+    // === LOGIKA STEP-BY-STEP TINDAK LANJUT SISWA BOLOS ===
+    let bolosStep = 1;
+    let selectedBolosDept = '';
+    let selectedBolosClass = '';
+    let selectedBolosStudent: any = null;
+
+    function openBolosModal() {
+      bolosStep = 1;
+      selectedBolosDept = '';
+      selectedBolosClass = '';
+      selectedBolosStudent = null;
+      renderBolosStep();
+      const modal = document.getElementById('modal-tindak-bolos');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+    }
+
+    function closeBolosModal() {
+      const modal = document.getElementById('modal-tindak-bolos');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    function renderBolosStep() {
+      const line = document.getElementById('bolos-progress-line');
+      if (line) line.style.width = `${((bolosStep - 1) / 3) * 100}%`;
+
+      for (let s = 1; s <= 4; s++) {
+        const badge = document.getElementById(`bolos-badge-${s}`);
+        const label = document.getElementById(`bolos-label-${s}`);
+        const panel = document.getElementById(`bolos-panel-${s}`);
+
+        if (panel) {
+          if (s === bolosStep) panel.classList.remove('hidden');
+          else panel.classList.add('hidden');
+        }
+
+        if (badge && label) {
+          if (s === bolosStep) {
+            badge.className = 'w-7 h-7 rounded-full bg-rose-600 text-white font-black text-xs flex items-center justify-center shadow-md shadow-rose-500/30 transition-all';
+            badge.textContent = String(s);
+            label.className = 'text-[10px] font-bold text-rose-700 whitespace-nowrap';
+          } else if (s < bolosStep) {
+            badge.className = 'w-7 h-7 rounded-full bg-emerald-500 text-white font-black text-xs flex items-center justify-center transition-all';
+            badge.textContent = '✓';
+            label.className = 'text-[10px] font-semibold text-emerald-700 whitespace-nowrap';
+          } else {
+            badge.className = 'w-7 h-7 rounded-full bg-slate-100 text-slate-400 font-bold text-xs flex items-center justify-center transition-all';
+            badge.textContent = String(s);
+            label.className = 'text-[10px] font-semibold text-slate-400 whitespace-nowrap';
+          }
+        }
+      }
+
+      const backBtn = document.getElementById('btn-bolos-back');
+      const submitBtn = document.getElementById('btn-bolos-submit');
+      if (backBtn) {
+        if (bolosStep > 1) backBtn.classList.remove('hidden');
+        else backBtn.classList.add('hidden');
+      }
+      if (submitBtn) {
+        if (bolosStep === 4) submitBtn.classList.remove('hidden');
+        else submitBtn.classList.add('hidden');
+      }
+    }
+
+    function populateBolosClasses() {
+      const container = document.getElementById('bolos-class-list');
+      if (!container) return;
+
+      const deptLabel = selectedBolosDept === 'rpl' ? 'RPL' : 'AKL';
+      const classes = [
+        { label: `Semua Kelas ${deptLabel}`, value: 'all', desc: `Seluruh Siswa ${deptLabel}` },
+        { label: `X ${deptLabel}`, value: `X ${deptLabel}`, desc: 'Kelas 10' },
+        { label: `XI ${deptLabel}`, value: `XI ${deptLabel}`, desc: 'Kelas 11' },
+        { label: `XII ${deptLabel}`, value: `XII ${deptLabel}`, desc: 'Kelas 12' },
+      ];
+
+      container.className = 'grid grid-cols-2 gap-2.5 pt-1';
+      container.innerHTML = classes.map((c: any) => `
+        <button type="button" class="bolos-class-pick-btn p-3.5 rounded-2xl border-2 border-slate-200 hover:border-rose-500 hover:bg-rose-50/50 bg-white transition-all active:scale-95 cursor-pointer text-left flex flex-col justify-between group" data-class="${c.value}">
+          <span class="font-black text-slate-900 text-xs sm:text-sm group-hover:text-rose-600 transition-colors">${c.label}</span>
+          <span class="text-[10px] text-slate-400 font-medium mt-0.5">${c.desc}</span>
+        </button>
+      `).join('');
+
+      container.querySelectorAll('.bolos-class-pick-btn').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          selectedBolosClass = (e.currentTarget as HTMLElement).dataset.class || 'all';
+          bolosStep = 3;
+          renderBolosStep();
+          populateBolosStudents();
+        });
+      });
+    }
+
+    function populateBolosStudents(searchFilter: string = '') {
+      const container = document.getElementById('bolos-student-list');
+      const hint = document.getElementById('bolos-student-class-hint');
+      const deptLabel = selectedBolosDept === 'rpl' ? 'RPL' : 'AKL';
+      const classTitle = selectedBolosClass === 'all' ? `Semua Kelas ${deptLabel}` : `Kelas ${selectedBolosClass}`;
+      if (hint) hint.textContent = `${classTitle} • Pilih siswa yang melakukan pelanggaran bolos`;
+      if (!container) return;
+
+      let students = cachedStudents.filter((s: any) => {
+        if (s.role !== 'siswa') return false;
+        const sCategory = (s.category || '').toLowerCase();
+        const sClass = (s.className || '').toUpperCase();
+        
+        const matchDept = selectedBolosDept === 'rpl' 
+          ? (sCategory === 'rpl' || sClass.includes('RPL'))
+          : (sCategory === 'akl' || sClass.includes('AKL'));
+        if (!matchDept) return false;
+
+        if (selectedBolosClass && selectedBolosClass !== 'all') {
+          const cleanClass = sClass.replace(/\s*[12]$/, '').trim();
+          return cleanClass === selectedBolosClass.toUpperCase() || sClass === selectedBolosClass.toUpperCase();
+        }
+
+        return true;
+      });
+
+      if (searchFilter.trim()) {
+        const q = searchFilter.toLowerCase().trim();
+        students = students.filter((s: any) => 
+          (s.name || '').toLowerCase().includes(q) || 
+          (s.identifier || '').toLowerCase().includes(q) ||
+          (s.className || '').toLowerCase().includes(q)
+        );
+      }
+
+      if (!students.length) {
+        container.innerHTML = '<p class="text-xs text-slate-400 italic text-center py-6">Tidak ada data siswa ditemukan.</p>';
+        return;
+      }
+
+      container.innerHTML = students.map((s: any) => {
+        const pts = getStudentPoints(s.rfidUid, s.id, s.role);
+        return `
+          <button type="button" class="bolos-student-pick-btn w-full p-2.5 rounded-xl border border-slate-100 hover:border-rose-400 hover:bg-rose-50/40 bg-slate-50/60 transition flex items-center justify-between text-left cursor-pointer active:scale-[0.99]" data-id="${s.id}">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <div class="w-8 h-8 rounded-lg bg-rose-100 text-rose-800 font-bold text-xs flex items-center justify-center shrink-0">
+                ${s.name.charAt(0)}
+              </div>
+              <div class="min-w-0">
+                <p class="font-bold text-xs text-slate-900 truncate">${s.name}</p>
+                <p class="text-[10px] text-slate-400 font-mono">${s.className} • NISN: ${s.identifier || '-'}</p>
+              </div>
+            </div>
+            <div class="text-right shrink-0">
+              <span class="text-xs font-black font-mono ${pts < 75 ? 'text-rose-600' : 'text-slate-800'}">${pts} P</span>
+              <span class="block text-[9px] text-slate-400">Pilih →</span>
+            </div>
+          </button>
+        `;
+      }).join('');
+
+      container.querySelectorAll('.bolos-student-pick-btn').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          const sid = (e.currentTarget as HTMLElement).dataset.id;
+          selectedBolosStudent = cachedStudents.find((s: any) => s.id === sid);
+          if (selectedBolosStudent) {
+            bolosStep = 4;
+            renderBolosStep();
+            populateBolosConfirmation();
+          }
+        });
+      });
+    }
+
+    function populateBolosConfirmation() {
+      if (!selectedBolosStudent) return;
+      const initial = document.getElementById('bolos-conf-initial');
+      const name = document.getElementById('bolos-conf-name');
+      const meta = document.getElementById('bolos-conf-meta');
+      const currentPts = document.getElementById('bolos-conf-current-pts');
+
+      const pts = getStudentPoints(selectedBolosStudent.rfidUid, selectedBolosStudent.id, selectedBolosStudent.role);
+
+      if (initial) initial.textContent = selectedBolosStudent.name.charAt(0);
+      if (name) name.textContent = selectedBolosStudent.name;
+      if (meta) meta.textContent = `NISN: ${selectedBolosStudent.identifier || '-'} • Kelas: ${selectedBolosStudent.className || '-'}`;
+      if (currentPts) currentPts.textContent = `${pts} Poin`;
+    }
+
+    async function submitSingleBolos() {
+      if (!selectedBolosStudent) return;
+      const btn = document.getElementById('btn-bolos-submit') as HTMLButtonElement | null;
+      const origText = btn ? btn.innerHTML : '';
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="material-symbols-outlined text-sm animate-spin">sync</span><span>Memproses...</span>';
+      }
+
+      try {
+        const res = await fetch('/api/attendance/bolos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ studentId: selectedBolosStudent.id }),
+        });
+        const result = await res.json();
+        alert(result.message || `Siswa ${selectedBolosStudent.name} berhasil ditindaklanjuti dan dipotong 10 poin!`);
+        closeBolosModal();
+        await updateRekapStats();
+      } catch (err: any) {
+        alert('Gagal mengeksekusi sanksi: ' + err.message);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = origText;
+        }
+      }
+    }
+
+    async function runBulkBolos() {
+      const confirmRun = confirm(
+        'Jalankan Evaluasi Deteksi Bolos untuk SELURUH SISWA hari ini?\n\n' +
+        'Siswa yang masuk pagi tanpa tap pulang akan otomatis dikategorikan "Bolos" dan dipotong 10 Poin.'
+      );
+      if (!confirmRun) return;
+      closeBolosModal();
+      try {
+        const res = await fetch('/api/attendance/bolos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+        const result = await res.json();
+        alert(result.message || 'Evaluasi bolos massal selesai!');
+        await updateRekapStats();
+      } catch (err: any) {
+        alert('Gagal mengeksekusi evaluasi bolos: ' + err.message);
+      }
+    }
+
+    // Event Listeners Modal Bolos
+    document.getElementById('btn-eval-bolos')?.addEventListener('click', openBolosModal);
+    document.getElementById('btn-close-bolos-modal')?.addEventListener('click', closeBolosModal);
+    document.getElementById('btn-bolos-cancel')?.addEventListener('click', closeBolosModal);
+    document.getElementById('btn-bolos-submit')?.addEventListener('click', submitSingleBolos);
+    document.getElementById('btn-bolos-bulk-all')?.addEventListener('click', runBulkBolos);
+
+    document.getElementById('btn-bolos-back')?.addEventListener('click', () => {
+      if (bolosStep > 1) {
+        bolosStep--;
+        renderBolosStep();
+      }
+    });
+
+    document.querySelectorAll('.bolos-step-indicator').forEach((ind) => {
+      ind.addEventListener('click', () => {
+        const target = parseInt((ind as HTMLElement).dataset.step || '1', 10);
+        if (target === bolosStep) return;
+        if (target > bolosStep) {
+          if (target >= 2 && !selectedBolosDept) return;
+          if (target >= 3 && !selectedBolosClass) return;
+          if (target >= 4 && !selectedBolosStudent) return;
+        }
+        bolosStep = target;
+        renderBolosStep();
+        if (target === 2) populateBolosClasses();
+        if (target === 3) populateBolosStudents();
+        if (target === 4) populateBolosConfirmation();
+      });
+    });
+
+    document.querySelectorAll('.bolos-dept-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        selectedBolosDept = (e.currentTarget as HTMLElement).dataset.dept || 'rpl';
+        bolosStep = 2;
+        renderBolosStep();
+        populateBolosClasses();
+      });
+    });
+
+    document.getElementById('bolos-student-search')?.addEventListener('input', (e) => {
+      const val = (e.target as HTMLInputElement).value;
+      populateBolosStudents(val);
+    });
+
+    // Action 2: Arsip Jam 23:00 Riil
+    document.getElementById('btn-trigger-archive')?.addEventListener('click', async () => {
+      const confirmRun = confirm(
+        'Simulasikan otomatisasi Jam 23:00 WIB?\n\n' +
+        'Sistem akan:\n' +
+        '1. Menghukum siswa bolos (-10 poin)\n' +
+        '2. Memindahkan log hari ini ke tabel arsip historis (attendance_history)\n' +
+        '3. Mengosongkan status aktif agar esok hari kembali bersih.'
+      );
+      if (!confirmRun) return;
+
+      const btn = document.getElementById('btn-trigger-archive') as HTMLButtonElement;
+      const origText = btn ? btn.innerHTML : '';
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="material-symbols-outlined text-sm animate-spin">sync</span><span>Mengarsip...</span>';
+      }
+
+      try {
+        const res = await fetch('/api/attendance/archive', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+        const result = await res.json();
+        alert(result.message || 'Arsip harian berhasil diselesaikan!');
+        await updateRekapStats();
+      } catch (err: any) {
+        alert('Gagal mengeksekusi arsip: ' + err.message);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = origText;
+        }
+      }
+    });
+
+
+    // === BINDING GENERATOR DOKUMEN & UNDUH PDF ===
+    (window as any).generateAndDownloadPDF = generateAndDownloadPDF;
+    (window as any).openDocumentPreviewModal = openDocumentPreviewModal;
+    (window as any).closeDocumentPreviewModal = closeDocumentPreviewModal;
+    (window as any).copyGeneratedWhatsApp = copyGeneratedWhatsApp;
+    (window as any).downloadExcelCSV = downloadExcelCSV;
+
+    // Step 1: Pilihan Jurusan
+    document.querySelectorAll('.gen-dept-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const target = e.currentTarget as HTMLButtonElement;
+        const dept = target.getAttribute('data-dept') as any;
+        if (!dept) return;
+        genDept = dept;
+
+        document.querySelectorAll('.gen-dept-btn').forEach((b) => {
+          b.classList.remove('border-2', 'border-blue-600', 'bg-blue-50/70', 'text-blue-900');
+          b.classList.add('border', 'border-slate-200', 'bg-white', 'text-slate-700');
+        });
+        target.classList.add('border-2', 'border-blue-600', 'bg-blue-50/70', 'text-blue-900');
+        target.classList.remove('border', 'border-slate-200', 'bg-white', 'text-slate-700');
+
+        const badge = document.getElementById('gen-jurusan-badge');
+        if (badge) {
+          const names: Record<string, string> = { all: 'Semua Jurusan', akl: 'Jurusan AKL', rpl: 'Jurusan RPL', guru: 'Dewan Guru' };
+          badge.textContent = names[dept] || dept;
+        }
+
+        updateGeneratorClasses();
+      });
+    });
+
+    // Step 2: Pilihan Kelas
+    document.getElementById('gen-class-select')?.addEventListener('change', (e) => {
+      genClass = (e.target as HTMLSelectElement).value;
+    });
+
+    // Step 3: Pilihan Waktu
+    document.querySelectorAll('.gen-time-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const target = e.currentTarget as HTMLButtonElement;
+        const time = target.getAttribute('data-time') as any;
+        if (!time) return;
+        genTime = time;
+
+        document.querySelectorAll('.gen-time-btn').forEach((b) => {
+          b.classList.remove('border-2', 'border-indigo-600', 'bg-indigo-50/70', 'text-indigo-900');
+          b.classList.add('border', 'border-slate-200', 'bg-white', 'text-slate-700');
+        });
+        target.classList.add('border-2', 'border-indigo-600', 'bg-indigo-50/70', 'text-indigo-900');
+        target.classList.remove('border', 'border-slate-200', 'bg-white', 'text-slate-700');
+
+        const badge = document.getElementById('gen-period-badge');
+        if (badge) {
+          const names: Record<string, string> = { today: 'Hari Ini', week: '1 Minggu', month: '1 Bulan', all: '1 Tahun / Arsip' };
+          badge.textContent = names[time] || time;
+        }
+      });
+    });
+
+    // Action Generator Buttons
+    document.getElementById('btn-gen-download-pdf')?.addEventListener('click', generateAndDownloadPDF);
+    document.getElementById('btn-gen-preview')?.addEventListener('click', openDocumentPreviewModal);
+    document.getElementById('btn-gen-copy-wa')?.addEventListener('click', copyGeneratedWhatsApp);
+
+    // Modal Action Buttons
+    document.getElementById('modal-btn-download')?.addEventListener('click', generateAndDownloadPDF);
+    document.getElementById('modal-btn-close')?.addEventListener('click', closeDocumentPreviewModal);
+
+    // Export & Action Listeners
+    document.getElementById('btn-export-excel')?.addEventListener('click', downloadExcelCSV);
+    document.getElementById('sidebar-btn-excel')?.addEventListener('click', downloadExcelCSV);
+    document.getElementById('sidebar-btn-wa')?.addEventListener('click', copyGeneratedWhatsApp);
+
+    // Inisialisasi Tab Switcher & Load Data
+    setupRekapSubnav();
+    window.addEventListener('attendance-updated', updateRekapStats);
+    updateRekapStats();
+    measureLatency();
+  </script>
+</Layout>

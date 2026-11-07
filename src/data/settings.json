@@ -1,0 +1,16 @@
+{
+  "jamBuka": "06:15",
+  "jamMasuk": "07:00",
+  "jamToleransi": "07:10",
+  "jamPulang": "13:30",
+  "spWali": "3 Hari Terlambat Berturut-turut",
+  "spBk": "Akumulasi 3 Hari Alpa",
+  "waTemplate": "Yth. Bapak/Ibu Wali Murid dari {nama_siswa} ({kelas}).\nAnanda telah hadir di SMK pada pukul {jam_masuk} WIB dengan status: [{status}].",
+  "scheduler": {
+    "lastBolosDate": null,
+    "lastArchivedDate": "2026-11-06",
+    "nextRunType": "bolos",
+    "nextRunTime": "2026-11-07 17:00:00 WIB (Deteksi Siswa Bolos)",
+    "lastStatusMessage": "Timer aktif: Menunggu jadwal berikutnya dalam ~2.36 jam (2026-11-07 17:00:00 WIB (Deteksi Siswa Bolos))"
+  }
+}

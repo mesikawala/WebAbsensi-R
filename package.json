@@ -1,0 +1,22 @@
+{
+  "name": "school-attendance-web",
+  "type": "module",
+  "version": "0.0.1",
+  "engines": {
+    "node": ">=22.23.4"
+  },
+  "scripts": {
+    "dev": "astro dev --host",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.18.0",
+    "@tailwindcss/vite": "^4.3.3",
+    "astro": "^7.4.4",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.9",
+    "tailwindcss": "^4.3.3"
+  }
+}

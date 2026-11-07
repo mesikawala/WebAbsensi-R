@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+/* 1. DEKLARASI FONT HOLIDAY (KHUSUS JUDUL) */
+@font-face {
+  font-family: 'HolidayTogether';
+  src: url('../../public/assets/font/OrtoidDemo.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+

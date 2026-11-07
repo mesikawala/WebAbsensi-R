@@ -1,0 +1,356 @@
+---
+/**
+ * @file src/components/Sidebar.astro
+ * @description Komponen Navigasi Sidebar Kiri untuk SI-HADIR SMK
+ * Dioptimalkan dengan visual active state kontras tinggi, scroll adaptif, dan transisi halus.
+ */
+interface Props {
+  activeNav?:
+    | "data-presensi"
+    | "jadwal-agenda"
+    | "izin-dispensasi"
+    | "siswa-guru"
+    | "rekap"
+    | "pengaturan"
+    | "login";
+}
+
+const { activeNav = "data-presensi" } = Astro.props;
+
+const authSession = Astro.cookies.get('auth_session')?.value;
+const isGuruSession = authSession === 'guru';
+
+const navItems = [
+  { id: "data-presensi", label: "Data Presensi", href: "/", icon: "dashboard", adminOnly: true },
+  {
+    id: "jadwal-agenda",
+    label: "Jadwal & Agenda",
+    href: "/jadwal",
+    icon: "calendar",
+    adminOnly: false,
+  },
+  {
+    id: "izin-dispensasi",
+    label: "Kelola Izin & Dispensasi",
+    href: "/izin-dispensasi",
+    icon: "document",
+    adminOnly: true,
+  },
+  {
+    id: "siswa-guru",
+    label: "Data Civitas",
+    href: "/siswa-guru",
+    icon: "users",
+    adminOnly: true,
+  },
+  {
+    id: "rekap",
+    label: "Rekapitulasi & PDF",
+    href: "/rekapitulasi",
+    icon: "report",
+    adminOnly: true,
+  },
+  {
+    id: "login",
+    label: "Portal Login Civitas",
+    href: "/login",
+    icon: "login",
+    adminOnly: false,
+  },
+];
+---
+
+<!-- ================================================================================================================================
+komponen penting buat nampilin icon
+================================================================================================================================ -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+  rel="stylesheet"
+/>
+<!-- =============================================================================================================================================== -->
+
+<aside
+  class="w-full md:w-64 lg:w-72 bg-gradient-to-b from-[#1e3a8a] via-[#1d4ed8] to-[#1e40af] text-blue-100 flex flex-col justify-between shrink-0 select-none shadow-xl border-r border-blue-900/40 overflow-y-auto h-[1300px]"
+  aria-label="Sidebar Navigasi Presensi"
+>
+  <div class="flex flex-col">
+    <!-- Brand Logo / Badge -->
+    <div
+      class="p-6 pb-5 flex items-center justify-between border-b border-white/10"
+    >
+      <a
+        href="/"
+        class="flex items-center gap-3 group focus:outline-none focus:ring-2 focus:ring-white/50 rounded-xl p-1 transition-all duration-200"
+      >
+        <div
+          class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center shadow-lg text-white font-extrabold group-hover:scale-105 transition-transform duration-200"
+        >
+          <span class="material-symbols-outlined text-[10px]">Book_6 </span>
+        </div>
+        <div>
+          <h1
+            class="text-white font-[HolidayTogether] text-4xl tracking-tight leading-none flex items-center gap-1.5"
+          >
+            SMART ABSEN
+          </h1>
+        </div>
+      </a>
+    </div>
+
+    <!-- Navigation Menu Items -->
+    <nav class="mt-4 px-3 space-y-1.5" aria-label="Menu Utama Presensi">
+      {
+        navItems.map((item) => {
+          const isActive = activeNav === item.id;
+          const isHidden = isGuruSession && item.adminOnly;
+          return (
+            <a
+              href={item.href}
+              id={`sidebar-link-${item.id}`}
+              data-admin-only={item.adminOnly ? "true" : undefined}
+              class={`nav-item ${
+                isHidden ? "hidden" : "flex"
+              } items-center justify-between px-3.5 py-3 rounded-xl text-xs font-semibold transition-all duration-200 ease-in-out cursor-pointer focus:outline-none focus:ring-2 focus:ring-white/60 ${
+                isActive
+                  ? "bg-white text-blue-900 font-bold shadow-lg shadow-blue-950/25 border-l-4 border-indigo-700 translate-x-1"
+                  : "text-blue-100/80 hover:text-white hover:bg-white/15 hover:translate-x-0.5"
+              }`}
+              aria-current={isActive ? "page" : undefined}
+            >
+              <div class="flex items-center gap-3">
+                {item.icon === "dashboard" && (
+                  <svg
+                    class={`w-4 h-4 shrink-0 transition-colors ${isActive ? "text-blue-700" : "text-blue-200"}`}
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.2"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M9 11l3 3L22 4" />
+                    <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
+                  </svg>
+                )}
+                {item.icon === "calendar" && (
+                  <svg
+                    class={`w-4 h-4 shrink-0 transition-colors ${isActive ? "text-blue-700" : "text-blue-200"}`}
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                  >
+                    <rect height="18" rx="2" ry="2" width="18" x="3" y="4" />
+                    <line x1="16" x2="16" y1="2" y2="6" />
+                    <line x1="8" x2="8" y1="2" y2="6" />
+                    <line x1="3" x2="21" y1="10" y2="10" />
+                  </svg>
+                )}
+                {item.icon === "document" && (
+                  <svg
+                    class={`w-4 h-4 shrink-0 transition-colors ${isActive ? "text-blue-700" : "text-blue-200"}`}
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                )}
+                {item.icon === "users" && (
+                  <svg
+                    class={`w-4 h-4 shrink-0 transition-colors ${isActive ? "text-blue-700" : "text-blue-200"}`}
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M23 21v-2a4 4 0 00-3-3.87" />
+                    <path d="M16 3.13a4 4 0 010 7.75" />
+                  </svg>
+                )}
+                {item.icon === "report" && (
+                  <svg
+                    class={`w-4 h-4 shrink-0 transition-colors ${isActive ? "text-blue-700" : "text-blue-200"}`}
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <line x1="16" x2="8" y1="13" y2="13" />
+                    <line x1="16" x2="8" y1="17" y2="17" />
+                  </svg>
+                )}
+                {item.icon === "login" && (
+                  <span class={`material-symbols-outlined text-base ${isActive ? "text-blue-700" : "text-blue-200"}`}>
+                    login
+                  </span>
+                )}
+                <span class="tracking-tight">{item.label}</span>
+              </div>
+
+              <div class="flex items-center gap-1.5" id={`sidebar-badge-${item.id}`}>
+                {isActive && (
+                  <span
+                    class="w-2 h-2 rounded-full bg-blue-600 shadow-sm"
+                    aria-hidden="true"
+                  />
+                )}
+              </div>
+            </a>
+          );
+        })
+      }
+
+      <!-- Divider: Konfigurasi -->
+      <div id="sidebar-divider-konfigurasi" class={`pt-5 pb-1 px-3 ${isGuruSession ? "hidden" : "block"}`}>
+        <span
+          class="text-[10px] uppercase font-bold tracking-wider text-blue-200/70"
+          >Konfigurasi Sistem</span
+        >
+      </div>
+
+      <a
+        href="/pengaturan"
+        id="sidebar-link-pengaturan"
+        data-admin-only="true"
+        class={`nav-item ${
+          isGuruSession ? "hidden" : "flex"
+        } items-center justify-between px-3.5 py-3 rounded-xl text-xs font-semibold transition-all duration-200 ease-in-out cursor-pointer focus:outline-none focus:ring-2 focus:ring-white/60 ${
+          activeNav === "pengaturan"
+            ? "bg-white text-blue-900 font-bold shadow-lg shadow-blue-950/25 border-l-4 border-indigo-700 translate-x-1"
+            : "text-blue-100/80 hover:text-white hover:bg-white/15 hover:translate-x-0.5"
+        }`}
+        aria-current={activeNav === "pengaturan" ? "page" : undefined}
+      >
+        <div class="flex items-center gap-3">
+          <svg
+            class={`w-4 h-4 shrink-0 transition-colors ${activeNav === "pengaturan" ? "text-blue-700" : "text-blue-200"}`}
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+          >
+            <circle cx="12" cy="12" r="3"></circle>
+            <path
+              d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"
+            ></path>
+          </svg>
+          <span class="tracking-tight">Pengaturan Sistem</span>
+        </div>
+        <div class="flex items-center gap-1.5" id="sidebar-badge-pengaturan">
+          {
+            activeNav === "pengaturan" && (
+              <span
+                class="w-2 h-2 rounded-full bg-blue-600 shadow-sm"
+                aria-hidden="true"
+              />
+            )
+          }
+        </div>
+      </a>
+    </nav>
+  </div>
+
+  <!-- Sidebar Bottom Profile Badge -->
+  <div
+    class="p-4 m-3 mt-6 rounded-2xl bg-blue-900/70 border border-blue-400/40 backdrop-blur-md flex items-center justify-between shadow-md"
+  >
+    <a href="/profil-siswa" id="sidebar-profile-link" class="flex items-center gap-3 cursor-pointer group">
+      <div class="relative">
+        <div
+          id="sidebar-user-avatar"
+          class="w-9 h-9 rounded-full bg-gradient-to-tr from-amber-500 to-orange-500 text-white font-black text-xs flex items-center justify-center ring-2 ring-blue-400/50 shadow-inner group-hover:scale-105 transition-transform"
+        >
+          AP
+        </div>
+        <span
+          class="w-2.5 h-2.5 bg-emerald-400 border-2 border-[#161a29] rounded-full absolute bottom-0 right-0"
+          title="Online Aktif"></span>
+      </div>
+      <div>
+        <h4 id="sidebar-user-name" class="text-xs font-bold text-white leading-tight group-hover:text-amber-300 transition-colors">Admin Piket</h4>
+        <p id="sidebar-user-role" class="text-[10px] text-blue-200">Petugas Sesi Pagi</p>
+      </div>
+    </a>
+    <button
+      onclick="window.sidebarLogout()"
+      class="p-2 rounded-xl text-rose-300 hover:text-white hover:bg-rose-500/20 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/40 cursor-pointer"
+      title="Keluar / Logout"
+      aria-label="Logout"
+    >
+      <span class="material-symbols-outlined text-base">logout</span>
+    </button>
+  </div>
+</aside>
+
+<script>
+  (window as any).sidebarLogout = function() {
+    localStorage.removeItem('auth_civitas');
+    localStorage.removeItem('auth_role');
+    sessionStorage.removeItem('auth_active');
+    sessionStorage.removeItem('bypass_login');
+    document.cookie = 'auth_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
+    window.location.replace('/login');
+  };
+
+  function updateSidebarAuth() {
+    try {
+      const authRaw = localStorage.getItem('auth_civitas');
+      const authRole = localStorage.getItem('auth_role');
+      if (!authRaw && !authRole) return;
+
+      let civ = { name: 'Admin Sekolah', role: authRole || 'admin' };
+      try { if (authRaw) civ = JSON.parse(authRaw); } catch {}
+      const role = civ.role || authRole;
+
+      const nameEl = document.getElementById('sidebar-user-name');
+      const roleEl = document.getElementById('sidebar-user-role');
+      const avatarEl = document.getElementById('sidebar-user-avatar');
+      if (nameEl) nameEl.textContent = civ.name || (role === 'guru' ? 'Dewan Guru' : 'Admin Sekolah');
+      if (roleEl) {
+        roleEl.textContent = role === 'guru' ? 'Dewan Guru' : (role === 'admin' ? 'Administrator (Dev)' : 'Peserta Didik');
+      }
+      if (avatarEl && civ.name) {
+        const initials = civ.name.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase();
+        avatarEl.textContent = initials || (role === 'guru' ? 'DG' : 'AP');
+      }
+
+      if (role === 'guru') {
+        // Sembunyikan semua menu & divider khusus admin di sidebar
+        const adminLinks = document.querySelectorAll('[data-admin-only="true"]');
+        adminLinks.forEach((el) => {
+          el.classList.add('hidden');
+          el.classList.remove('flex');
+        });
+
+        const divider = document.getElementById('sidebar-divider-konfigurasi');
+        if (divider) {
+          divider.classList.add('hidden');
+          divider.classList.remove('block');
+        }
+
+        const loginLink = document.getElementById('sidebar-link-login') as HTMLAnchorElement;
+        if (loginLink) {
+          loginLink.href = '/profil-siswa';
+          const labelSpan = loginLink.querySelector('.tracking-tight');
+          if (labelSpan) labelSpan.textContent = 'Profil Guru';
+          const iconSpan = loginLink.querySelector('.material-symbols-outlined');
+          if (iconSpan) iconSpan.textContent = 'account_circle';
+        }
+      }
+    } catch {}
+  }
+
+  updateSidebarAuth();
+  document.addEventListener('DOMContentLoaded', updateSidebarAuth);
+</script>
+

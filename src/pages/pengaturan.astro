@@ -1,0 +1,435 @@
+---
+/**
+ * @file src/pages/pengaturan.astro
+ * @description Halaman Pengaturan & Konfigurasi Sistem Presensi Sekolah
+ * Dilengkapi ring-focus adaptif pada input waktu, select box, dan textarea.
+ */
+export const prerender = false;
+
+const authSession = Astro.cookies.get("auth_session")?.value;
+if (!authSession) {
+  return Astro.redirect("/login");
+}
+if (authSession === "siswa") {
+  return Astro.redirect("/profil-siswa");
+}
+
+import Layout from "../layouts/Layout.astro";
+---
+
+<Layout title="Pengaturan Sistem" activeNav="pengaturan">
+  <div class="flex flex-col gap-6">
+    <!-- Top Action Bar -->
+    <div
+      class="p-5 sm:p-6 bg-white/80 backdrop-blur-xl rounded-3xl shadow-xs border border-slate-200/70 flex flex-col md:flex-row md:items-center justify-between gap-4"
+    >
+      <div>
+        <div
+          class="flex items-center gap-2 text-xs font-medium text-slate-500 mb-1"
+        >
+          <span
+            class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold text-[11px]"
+          >
+            <span class="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"
+            ></span>
+            Server Online
+          </span>
+        </div>
+        <h1
+          class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight"
+        >
+          Pengaturan Sistem
+        </h1>
+        <p class="text-xs text-slate-500 mt-1">
+          Konfigurasi jam operasional dan notifikasi presensi.
+        </p>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button
+          id="btn-reset-settings"
+          class="px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-xl shadow-xs transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-slate-400"
+        >
+          Reset Default
+        </button>
+        <button
+          id="btn-save-settings"
+          class="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-md shadow-blue-500/20 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-1"
+        >
+          Simpan
+        </button>
+      </div>
+    </div>
+
+    <!-- Grid 1: Operational Hours & Vocational Rules -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Card 1: Jam Operasional Gerbang -->
+      <section
+        class="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-5 sm:p-6 space-y-5"
+      >
+        <div
+          class="flex items-start justify-between border-b border-slate-100 pb-4"
+        >
+          <div class="flex items-center gap-3">
+            <div
+              class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold"
+            >
+              <svg
+                class="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"></path>
+              </svg>
+            </div>
+            <div>
+              <h2 class="text-sm font-bold text-slate-900">
+                Jam Operasional
+              </h2>
+              <p class="text-xs text-slate-500">
+                Waktu gerbang dan toleransi presensi.
+              </p>
+            </div>
+          </div>
+          <span
+            class="px-2.5 py-0.5 text-[10px] bg-slate-100 text-slate-700 font-bold rounded-full border border-slate-200"
+            >KBM Reguler</span
+          >
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label
+              for="jam-buka-input"
+              class="block text-xs font-bold text-slate-700 mb-1.5"
+              >Buka Gerbang</label
+            >
+            <input
+              id="jam-buka-input"
+              class="w-full text-xs font-mono font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-all duration-200 shadow-inner"
+              type="time"
+              value="06:15"
+            />
+          </div>
+          <div>
+            <label
+              for="jam-masuk-input"
+              class="block text-xs font-bold text-slate-700 mb-1.5"
+              >Bel Masuk</label
+            >
+            <input
+              id="jam-masuk-input"
+              class="w-full text-xs font-mono font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-all duration-200 shadow-inner"
+              type="time"
+              value="07:00"
+            />
+          </div>
+          <div>
+            <label
+              for="jam-toleransi-input"
+              class="block text-xs font-bold text-slate-700 mb-1.5"
+              >Batas Toleransi</label
+            >
+            <input
+              id="jam-toleransi-input"
+              class="w-full text-xs font-mono font-bold text-amber-800 bg-amber-50/50 border border-amber-200 rounded-xl px-3 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all duration-200 shadow-inner"
+              type="time"
+              value="07:15"
+            />
+          </div>
+          <div>
+            <label
+              for="jam-pulang-input"
+              class="block text-xs font-bold text-slate-700 mb-1.5"
+              >Jam Pulang</label
+            >
+            <input
+              id="jam-pulang-input"
+              class="w-full text-xs font-mono font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-all duration-200 shadow-inner"
+              type="time"
+              value="15:30"
+            />
+          </div>
+        </div>
+      </section>
+
+      <!-- Card 2: Aturan Presensi Jurusan -->
+      <section
+        class="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-5 sm:p-6 space-y-5"
+      >
+        <div
+          class="flex items-start justify-between border-b border-slate-100 pb-4"
+        >
+          <div class="flex items-center gap-3">
+            <div
+              class="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold"
+            >
+              <svg
+                class="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"></path>
+              </svg>
+            </div>
+            <div>
+              <h2 class="text-sm font-bold text-slate-900">
+                Batas Peringatan SP
+              </h2>
+              <p class="text-xs text-slate-500">
+                Kriteria teguran dan panggilan BK.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label
+              for="sp-wali-select"
+              class="block text-xs font-bold text-slate-700 mb-1.5"
+              >SP Wali Kelas</label
+            >
+            <select
+              id="sp-wali-select"
+              class="w-full text-xs font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-all duration-200 shadow-inner"
+            >
+              <option value="3 Hari Terlambat Berturut-turut" selected>3 Hari Telat Berturut</option>
+              <option value="5 Hari Terlambat dalam 1 Bulan">5 Hari Telat / Bulan</option>
+            </select>
+          </div>
+          <div>
+            <label
+              for="sp-bk-select"
+              class="block text-xs font-bold text-slate-700 mb-1.5"
+              >Panggilan BK</label
+            >
+            <select
+              id="sp-bk-select"
+              class="w-full text-xs font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-all duration-200 shadow-inner"
+            >
+              <option value="Akumulasi 3 Hari Alpa" selected>3 Hari Alpa</option>
+              <option value="Akumulasi 5 Hari Alpa dalam 1 Semester">5 Hari Alpa / Semester</option>
+            </select>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Card 3: WhatsApp Gateway Integration with Accessible Textarea -->
+    <section
+      class="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-5 sm:p-6 space-y-5"
+    >
+      <div
+        class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4"
+      >
+        <div class="flex items-center gap-3">
+          <div
+            class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold"
+          >
+            <svg
+              class="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"></path>
+            </svg>
+          </div>
+          <div>
+            <h2 class="text-sm font-bold text-slate-900">
+              Notifikasi WhatsApp
+            </h2>
+            <p class="text-xs text-slate-500">
+              Kirim presensi otomatis ke nomor wali.
+            </p>
+          </div>
+        </div>
+        <div
+          class="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-100 border border-emerald-300 rounded-xl text-xs font-bold text-emerald-900"
+        >
+          <span class="w-2 h-2 rounded-full bg-emerald-600 animate-ping"></span>
+          <span>Gateway Aktif</span>
+        </div>
+      </div>
+
+      <div
+        class="bg-slate-50 p-4 sm:p-5 rounded-2xl space-y-3 border border-slate-200/70"
+      >
+        <label
+          for="wa-template-area"
+          class="text-xs font-bold text-slate-800 block"
+          >Template Pesan</label
+        >
+        <textarea
+          id="wa-template-area"
+          rows={3}
+          class="w-full text-xs font-mono p-3.5 bg-white border border-slate-300 rounded-xl leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-all duration-200 shadow-inner"
+          >Yth. Bapak/Ibu Wali Murid dari &#123;nama_siswa&#125;
+          (&#123;kelas&#125;). Ananda telah hadir di SMK pada pukul
+          &#123;jam_masuk&#125; WIB dengan status: [&#123;status&#125;].</textarea
+        >
+      </div>
+    </section>
+
+    <!-- Card 4: Backup Data & Keamanan -->
+    <section
+      class="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-5 sm:p-6 space-y-4"
+    >
+      <div
+        class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4"
+      >
+        <div>
+          <h2 class="text-sm font-bold text-slate-900">
+            Pencadangan Data
+          </h2>
+          <p class="text-xs text-slate-500">
+            Backup data presensi ke berkas SQL.
+          </p>
+        </div>
+        <button
+          class="px-4 py-2.5 text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl transition-all duration-200 inline-flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-slate-500 active:scale-95"
+        >
+          <svg
+            class="w-4 h-4 text-slate-700"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"></path>
+          </svg>
+          <span>Unduh Backup</span>
+        </button>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const jamBukaInput = document.getElementById(
+      "jam-buka-input",
+    ) as HTMLInputElement | null;
+    const jamMasukInput = document.getElementById(
+      "jam-masuk-input",
+    ) as HTMLInputElement | null;
+    const jamToleransiInput = document.getElementById(
+      "jam-toleransi-input",
+    ) as HTMLInputElement | null;
+    const jamPulangInput = document.getElementById(
+      "jam-pulang-input",
+    ) as HTMLInputElement | null;
+    const spWaliSelect = document.getElementById(
+      "sp-wali-select",
+    ) as HTMLSelectElement | null;
+    const spBkSelect = document.getElementById(
+      "sp-bk-select",
+    ) as HTMLSelectElement | null;
+    const waTemplateArea = document.getElementById(
+      "wa-template-area",
+    ) as HTMLTextAreaElement | null;
+    const btnSave = document.getElementById(
+      "btn-save-settings",
+    ) as HTMLButtonElement | null;
+    const btnReset = document.getElementById(
+      "btn-reset-settings",
+    ) as HTMLButtonElement | null;
+
+    async function loadSettings() {
+      try {
+        const res = await fetch("/api/settings");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (jamBukaInput && data.jamBuka) jamBukaInput.value = data.jamBuka;
+        if (jamMasukInput && data.jamMasuk) jamMasukInput.value = data.jamMasuk;
+        if (jamToleransiInput && data.jamToleransi)
+          jamToleransiInput.value = data.jamToleransi;
+        if (jamPulangInput && data.jamPulang)
+          jamPulangInput.value = data.jamPulang;
+        if (spWaliSelect && data.spWali) spWaliSelect.value = data.spWali;
+        if (spBkSelect && data.spBk) spBkSelect.value = data.spBk;
+        if (waTemplateArea && data.waTemplate)
+          waTemplateArea.value = data.waTemplate;
+      } catch (e) {
+        console.error("Gagal memuat pengaturan:", e);
+      }
+    }
+
+    async function saveSettings() {
+      if (!btnSave) return;
+      const originalText = btnSave.innerHTML;
+      btnSave.disabled = true;
+      btnSave.innerHTML = `
+        <span class="inline-flex items-center gap-1.5">
+          <svg class="animate-spin h-3.5 w-3.5 text-white" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+          Menyimpan...
+        </span>`;
+
+      const payload = {
+        jamBuka: jamBukaInput?.value || "06:15",
+        jamMasuk: jamMasukInput?.value || "07:00",
+        jamToleransi: jamToleransiInput?.value || "07:15",
+        jamPulang: jamPulangInput?.value || "15:30",
+        spWali: spWaliSelect?.value || "",
+        spBk: spBkSelect?.value || "",
+        waTemplate: waTemplateArea?.value || "",
+      };
+
+      try {
+        const res = await fetch("/api/settings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (res.ok) {
+          btnSave.className =
+            "px-4 py-2 text-xs font-bold text-white bg-emerald-600 rounded-xl shadow-md transition-all duration-200";
+          btnSave.innerHTML = "Tersimpan! ✓";
+          setTimeout(() => {
+            btnSave.disabled = false;
+            btnSave.className =
+              "px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-md shadow-blue-500/20 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-1";
+            btnSave.innerHTML = originalText;
+          }, 2000);
+        }
+      } catch {
+        btnSave.disabled = false;
+        btnSave.innerHTML = originalText;
+      }
+    }
+
+    async function resetSettings() {
+      if (!confirm("Kembalikan semua pengaturan ke standar awal?")) return;
+      if (!btnReset) return;
+      btnReset.disabled = true;
+      try {
+        const res = await fetch("/api/settings", { method: "DELETE" });
+        if (res.ok) {
+          await loadSettings();
+        }
+      } finally {
+        btnReset.disabled = false;
+      }
+    }
+
+    btnSave?.addEventListener("click", saveSettings);
+    btnReset?.addEventListener("click", resetSettings);
+    loadSettings();
+  </script>
+</Layout>

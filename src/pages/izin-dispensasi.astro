@@ -1,0 +1,892 @@
+---
+/**
+ * @file src/pages/izin-dispensasi.astro
+ * @description Halaman Kelola Izin & Dispensasi Siswa & Guru
+ * Terintegrasi penuh dengan API permissions, SSE Realtime, dan filter kategori.
+ */
+export const prerender = false;
+
+const authSession = Astro.cookies.get('auth_session')?.value;
+if (!authSession) {
+  return Astro.redirect('/login');
+}
+if (authSession === 'siswa') {
+  return Astro.redirect('/profil-siswa');
+}
+
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Kelola Izin & Dispensasi" activeNav="izin-dispensasi">
+  <div class="flex flex-col gap-6">
+    <!-- Header Summary & Metrik -->
+    <section class="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <!-- Card 1: Menunggu Verifikasi -->
+      <div class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 p-5 text-white card-glow-blue transition-transform duration-200 hover:-translate-y-1">
+        <div class="relative z-10 flex items-start justify-between">
+          <div>
+            <span class="text-xs font-bold tracking-wide uppercase text-blue-200">Menunggu Verifikasi</span>
+            <div class="mt-3 flex items-baseline gap-2">
+              <h3 id="perm-stat-menunggu" class="text-3xl font-black tracking-tight">0</h3>
+              <span class="text-xs font-medium text-blue-100">Pengajuan Berkas</span>
+            </div>
+            <p class="mt-1 text-xs text-blue-100/90 font-medium">Perlu persetujuan piket/admin</p>
+          </div>
+          <div class="w-16 h-16 shrink-0 opacity-90 drop-shadow-md" aria-hidden="true">
+            <svg class="w-full h-full" fill="none" viewBox="0 0 80 80">
+              <ellipse cx="40" cy="22" fill="white" fill-opacity="0.95" rx="28" ry="12"></ellipse>
+              <ellipse cx="40" cy="40" fill="white" fill-opacity="0.6" rx="28" ry="12"></ellipse>
+              <ellipse cx="40" cy="58" fill="white" fill-opacity="0.3" rx="28" ry="12"></ellipse>
+            </svg>
+          </div>
+        </div>
+        <div class="mt-5 flex items-center justify-between pt-3 bg-white/10 -mx-5 -mb-5 px-5 py-2.5">
+          <span class="text-[11px] text-blue-100">Verifikasi berkas presensi</span>
+          <span class="px-2.5 py-0.5 rounded-lg bg-white/20 text-white text-[10px] font-bold">Realtime</span>
+        </div>
+      </div>
+
+      <!-- Card 2: Disetujui Hari Ini -->
+      <div class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-sky-500 to-cyan-500 p-5 text-white card-glow-cyan transition-transform duration-200 hover:-translate-y-1">
+        <div class="relative z-10 flex items-start justify-between">
+          <div>
+            <span class="text-xs font-bold tracking-wide uppercase text-cyan-100">Disetujui Sah</span>
+            <div class="mt-3 flex items-baseline gap-2">
+              <h3 id="perm-stat-disetujui" class="text-3xl font-black tracking-tight">0</h3>
+              <span class="text-xs font-medium text-cyan-100">Dokumen Sah</span>
+            </div>
+            <p class="mt-1 text-xs text-cyan-100/90 font-medium">Siswa terbebas dari status alpa</p>
+          </div>
+          <div class="w-16 h-16 shrink-0 opacity-90 drop-shadow-md" aria-hidden="true">
+            <svg class="w-full h-full" fill="none" viewBox="0 0 80 80">
+              <path d="M40 10L68 24L40 38L12 24L40 10Z" fill="white" fill-opacity="0.95"></path>
+              <path d="M12 36L40 50L68 36L62 42L40 54L18 42L12 36Z" fill="white" fill-opacity="0.7"></path>
+              <path d="M12 50L40 64L68 50L62 56L40 68L18 56L12 50Z" fill="white" fill-opacity="0.4"></path>
+            </svg>
+          </div>
+        </div>
+        <div class="mt-5 flex items-center justify-between pt-3 bg-white/10 -mx-5 -mb-5 px-5 py-2.5">
+          <span class="text-[11px] text-cyan-100">Otomatis masuk rekapitulasi</span>
+          <a href="/rekapitulasi" class="px-3 py-1 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xs font-bold transition-all duration-200">
+            Lihat Rekap →
+          </a>
+        </div>
+      </div>
+
+      <!-- Card 3: Ditolak & Selesai (Arsip) -->
+      <div class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 p-5 text-white card-glow-green transition-transform duration-200 hover:-translate-y-1">
+        <div class="relative z-10 flex items-start justify-between">
+          <div>
+            <span class="text-xs font-bold tracking-wide uppercase text-emerald-100">Ditolak / Arsip Selesai</span>
+            <div class="mt-3 flex items-baseline gap-2">
+              <h3 id="perm-stat-ditolak" class="text-3xl font-black tracking-tight">0</h3>
+              <span class="text-xs font-medium text-emerald-100">Berkas Diarsipkan</span>
+            </div>
+            <p class="mt-1 text-xs text-emerald-100/90 font-medium">Selesai atau ditolak oleh piket</p>
+          </div>
+          <div class="w-16 h-16 shrink-0 opacity-90 drop-shadow-md" aria-hidden="true">
+            <svg class="w-full h-full" fill="none" viewBox="0 0 80 80">
+              <circle cx="40" cy="40" fill="none" opacity="0.85" r="26" stroke="white" stroke-dasharray="14 10" stroke-linecap="round" stroke-width="8"></circle>
+              <circle cx="40" cy="40" fill="white" opacity="0.95" r="12"></circle>
+            </svg>
+          </div>
+        </div>
+        <div class="mt-5 flex items-center justify-between pt-3 bg-white/10 -mx-5 -mb-5 px-5 py-2.5">
+          <span class="text-[11px] text-emerald-100">Status tercatat di sistem</span>
+          <span class="px-2.5 py-0.5 rounded-lg bg-white/20 text-white text-[10px] font-bold">Arsip</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Folder Tabs & Controls with Accessible Ring-Focus Search -->
+    <section class="space-y-0">
+      <div class="flex items-center gap-2 overflow-x-auto pb-0 select-none">
+        <button id="tab-all" data-category="all" class="tab-category tab-notch-active px-5 py-2.5 text-xs font-bold text-slate-900 transition-all duration-200 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-600">
+          <span>Semua Permohonan</span>
+          <span id="count-all" class="px-2 py-0.5 rounded-full text-[10px] bg-blue-100 text-blue-900 font-extrabold border border-blue-200">0</span>
+        </button>
+        <button id="tab-sakit" data-category="sakit" class="tab-category tab-notch-inactive px-5 py-2.5 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-200 transition-all duration-200 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-600">
+          <span>Izin Sakit (Surat Dokter)</span>
+          <span id="count-sakit" class="px-2 py-0.5 rounded-full text-[10px] bg-slate-200 text-slate-800 font-bold">0</span>
+        </button>
+        <button id="tab-dispensasi" data-category="dispensasi" class="tab-category tab-notch-inactive px-5 py-2.5 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-200 transition-all duration-200 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-600">
+          <span>Dispensasi (Lomba / PKL)</span>
+          <span id="count-dispensasi" class="px-2 py-0.5 rounded-full text-[10px] bg-amber-100 text-amber-900 font-bold border border-amber-200">0</span>
+        </button>
+        <button id="tab-keluarga" data-category="keluarga" class="tab-category tab-notch-inactive px-5 py-2.5 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-200 transition-all duration-200 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-600">
+          <span>Urusan Keluarga</span>
+          <span id="count-keluarga" class="px-2 py-0.5 rounded-full text-[10px] bg-slate-200 text-slate-800 font-bold">0</span>
+        </button>
+      </div>
+
+      <div class="bg-white rounded-b-3xl rounded-tr-3xl p-5 sm:p-6 shadow-xs border border-slate-200/70 space-y-4">
+        <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
+          <div class="relative flex-1 max-w-lg">
+            <label for="search-izin-input" class="sr-only">Pencarian Izin dan Dispensasi</label>
+            <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg pointer-events-none" aria-hidden="true">search</span>
+            <input
+              id="search-izin-input"
+              class="w-full pl-10 pr-9 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-all duration-200 shadow-inner"
+              placeholder="Cari nama siswa, guru, kelas, atau perihal..."
+              type="search"
+            />
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              id="btn-cleanup-total"
+              onclick="window.cleanupPermissions(event)"
+              class="px-3.5 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs border border-rose-200 transition-all duration-200 flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-rose-500 active:scale-95 cursor-pointer shadow-xs"
+              title="Pembersihan Total: Hapus berkas ditolak & arsipkan yang selesai"
+            >
+              <span class="material-symbols-outlined text-base text-rose-600">delete_sweep</span>
+              <span id="btn-cleanup-text">Bersihkan Permohonan</span>
+            </button>
+            <button id="btn-open-modal" class="px-4 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-xs shadow-md shadow-blue-500/20 hover:bg-blue-700 transition-all duration-200 active:scale-95 flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-1 cursor-pointer">
+              <span class="material-symbols-outlined text-base">add_circle</span>
+              <span>+ Buat Permohonan Baru</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- List Permohonan Izin & Dispensasi Dinamis -->
+    <div id="permissions-list" class="space-y-3.5">
+      <div class="py-12 text-center text-slate-400 font-medium text-xs">Memuat data permohonan izin & dispensasi...</div>
+    </div>
+  </div>
+
+  <!-- Modal Dialog: Buat Permohonan Baru -->
+  <div id="perm-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-in fade-in duration-200">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
+          <span class="material-symbols-outlined text-blue-600 text-xl">note_add</span>
+          <span>Formulir Izin & Dispensasi</span>
+        </h3>
+        <button id="btn-close-modal" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <form id="perm-form" class="space-y-4">
+        <div>
+          <label for="perm-student-select" class="block text-xs font-bold text-slate-700 mb-1.5">Pilih Siswa / Guru *</label>
+          <select id="perm-student-select" required class="w-full text-xs font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 shadow-inner">
+            <option value="">-- Pilih Siswa atau Guru --</option>
+          </select>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label for="perm-category-select" class="block text-xs font-bold text-slate-700 mb-1.5">Kategori Permohonan *</label>
+            <select id="perm-category-select" required class="w-full text-xs font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 shadow-inner">
+              <option value="sakit">Izin Sakit (Surat Dokter)</option>
+              <option value="dispensasi" selected>Dispensasi (Lomba / PKL)</option>
+              <option value="keluarga">Urusan Keluarga</option>
+            </select>
+          </div>
+          <div>
+            <label for="perm-status-select" class="block text-xs font-bold text-slate-700 mb-1.5">Status Persetujuan *</label>
+            <select id="perm-status-select" required class="w-full text-xs font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 shadow-inner">
+              <option value="Disetujui" selected>Langsung Disetujui</option>
+              <option value="Menunggu">Menunggu Verifikasi</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label for="perm-title-input" class="block text-xs font-bold text-slate-700 mb-1.5">Perihal / Alasan Lengkap *</label>
+          <input id="perm-title-input" required placeholder="Contoh: Dispensasi Lomba Web Technologies LKS" class="w-full text-xs font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 shadow-inner" />
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label for="perm-start-input" class="block text-xs font-bold text-slate-700 mb-1.5">Mulai Tanggal *</label>
+            <input id="perm-start-input" type="date" required class="w-full text-xs font-mono font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 shadow-inner" />
+          </div>
+          <div>
+            <label for="perm-end-input" class="block text-xs font-bold text-slate-700 mb-1.5">Sampai Tanggal *</label>
+            <input id="perm-end-input" type="date" required class="w-full text-xs font-mono font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 shadow-inner" />
+          </div>
+        </div>
+
+        <div>
+          <label for="perm-attach-input" class="block text-xs font-bold text-slate-700 mb-1.5">Catatan Lampiran / Dokumen Pendukung</label>
+          <input id="perm-attach-input" placeholder="Contoh: Surat Tugas Resmi No: 421.5/318/SMK" class="w-full text-xs font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 shadow-inner" />
+        </div>
+
+        <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+          <button type="button" id="btn-cancel-modal" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-all">
+            Batal
+          </button>
+          <button type="submit" id="btn-submit-perm" class="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-md transition-all">
+            Simpan Permohonan
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Dialog: Detail Permohonan Izin & Pratinjau Foto Bukti (Khusus Guru / Read-Only) -->
+  <div id="detail-perm-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs hidden items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-7 shadow-2xl border border-slate-200 space-y-4 animate-in fade-in duration-200 my-auto max-h-[92vh] overflow-y-auto">
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-xs">
+            <span class="material-symbols-outlined text-2xl">description</span>
+          </div>
+          <div>
+            <h3 class="text-base font-extrabold text-slate-900">Rincian & Bukti Izin Siswa</h3>
+            <p class="text-[11px] text-slate-500">Peninjauan berkas permohonan surat izin / dispensasi</p>
+          </div>
+        </div>
+        <button id="btn-close-detail-modal" type="button" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100 transition" title="Tutup">
+          <span class="material-symbols-outlined text-xl">close</span>
+        </button>
+      </div>
+
+      <!-- Info Banner: Guru Tidak Bisa Edit (Read-Only) -->
+      <div class="p-3 rounded-2xl bg-amber-50/80 border border-amber-200/80 flex items-start gap-2.5 text-[11px] text-amber-900 leading-relaxed">
+        <span class="material-symbols-outlined text-base text-amber-600 shrink-0 mt-0.5">lock</span>
+        <span>
+          <strong>Kebijakan Sekolah (Read-Only):</strong> Pihak guru tidak dapat mengedit isi pengajuan siswa. Guru hanya berhak <strong>Menyetujui</strong> atau <strong>Menolak</strong>. Pengeditan hanya dapat dilakukan oleh siswa sebelum disetujui.
+        </span>
+      </div>
+
+      <!-- Siswa Profile Card -->
+      <div class="flex items-center justify-between p-4 rounded-2xl bg-blue-50/60 border border-blue-100/80">
+        <div class="flex items-center gap-3">
+          <div id="detail-student-avatar" class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-extrabold flex items-center justify-center text-sm shadow-md">
+            S
+          </div>
+          <div>
+            <h4 id="detail-student-name" class="text-sm font-extrabold text-slate-900">-</h4>
+            <p class="text-xs text-slate-500 font-medium">
+              <span id="detail-student-class" class="font-bold text-slate-700">-</span> • NIS/ID: <span id="detail-student-id" class="font-mono text-slate-600">-</span>
+            </p>
+          </div>
+        </div>
+        <div id="detail-status-badge">
+          <!-- Dynamic Badge -->
+        </div>
+      </div>
+
+      <!-- Detail Grid: Kategori & Tanggal -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+        <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/70">
+          <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Kategori Permohonan</span>
+          <p id="detail-perm-category" class="font-bold text-slate-800 mt-1 flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-sm text-blue-600">badge</span>
+            <span>-</span>
+          </p>
+        </div>
+        <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/70">
+          <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Rentang Tanggal & Durasi</span>
+          <p id="detail-perm-dates" class="font-bold text-slate-800 mt-1 font-mono text-[11px]">
+            -
+          </p>
+        </div>
+      </div>
+
+      <!-- Alasan / Keterangan Lengkap Siswa -->
+      <div class="space-y-1.5">
+        <label class="text-xs font-bold text-slate-700 flex items-center gap-1">
+          <span class="material-symbols-outlined text-sm text-slate-500">format_quote</span>
+          <span>Alasan / Keterangan dari Siswa:</span>
+        </label>
+        <div id="detail-perm-reason" class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs text-slate-800 leading-relaxed font-medium select-text">
+          -
+        </div>
+      </div>
+
+      <!-- Catatan Lampiran Dokumen -->
+      <div class="flex items-center gap-2 text-xs text-slate-600 px-1">
+        <span class="material-symbols-outlined text-sm text-emerald-600">task</span>
+        <span>Dokumen: <strong id="detail-perm-attach" class="text-slate-800 font-semibold">-</strong></span>
+      </div>
+
+      <!-- Bukti Foto Surat / Dispensasi -->
+      <div class="space-y-2 pt-1 border-t border-slate-100">
+        <div class="flex items-center justify-between">
+          <label class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-sm text-blue-600">image</span>
+            <span>Foto Bukti Surat / Keterangan Dokter:</span>
+          </label>
+          <span id="detail-photo-tag" class="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md"></span>
+        </div>
+        
+        <!-- Preview Container Jika Ada Foto -->
+        <div id="detail-photo-container" class="rounded-2xl border border-slate-200 overflow-hidden bg-slate-900/5 p-3 flex flex-col items-center justify-center">
+          <img id="detail-photo-img" src="" alt="Foto Bukti Izin" class="max-h-72 rounded-xl object-contain shadow-sm cursor-pointer hover:opacity-95 transition" title="Klik untuk membuka di tab baru" />
+          <div class="mt-3 flex items-center gap-2.5 flex-wrap">
+            <a id="detail-photo-link" href="#" target="_blank" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition shadow-xs">
+              <span class="material-symbols-outlined text-sm">open_in_new</span>
+              <span>Buka Gambar Penuh ↗</span>
+            </a>
+            <a id="detail-photo-download" href="#" download="bukti-izin-siswa.jpg" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold border border-slate-200 transition">
+              <span class="material-symbols-outlined text-sm">download</span>
+              <span>Unduh Foto</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Alert Jika Tidak Ada Foto Bukti -->
+        <div id="detail-no-photo" class="hidden p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-600 text-center">
+          <span class="material-symbols-outlined text-2xl text-slate-400 mb-1">no_photography</span>
+          <p class="font-bold text-slate-700">Tidak ada foto bukti terlampir</p>
+          <p class="text-[11px] text-slate-500 mt-0.5">Permohonan diajukan melalui teks keterangan tanpa lampiran foto kamera.</p>
+        </div>
+      </div>
+
+      <!-- Action Footer (Setujui / Tolak oleh Guru) -->
+      <div class="flex items-center justify-between pt-3 border-t border-slate-100 flex-wrap gap-2">
+        <button type="button" id="btn-close-detail-modal-footer" class="px-4 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-all">
+          Tutup
+        </button>
+        <div id="detail-action-buttons-group" class="flex items-center gap-2">
+          <!-- Dynamic Approve/Reject buttons -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let permissionsData: any[] = [];
+    let studentsData: any[] = [];
+    let activeCategory = 'all';
+    let searchQuery = '';
+
+    const authRole = typeof window !== 'undefined' ? (localStorage.getItem('auth_role') || 'guru') : 'guru';
+    const isGuruOrAdmin = authRole === 'guru' || authRole === 'admin';
+
+    const listContainer = document.getElementById('permissions-list');
+    const modal = document.getElementById('perm-modal');
+    const btnOpenModal = document.getElementById('btn-open-modal');
+    const btnCloseModal = document.getElementById('btn-close-modal');
+    const btnCancelModal = document.getElementById('btn-cancel-modal');
+    const permForm = document.getElementById('perm-form') as HTMLFormElement | null;
+    const studentSelect = document.getElementById('perm-student-select') as HTMLSelectElement | null;
+    const searchInput = document.getElementById('search-izin-input') as HTMLInputElement | null;
+    const btnCleanupTotal = document.getElementById('btn-cleanup-total');
+
+    // Handler Pembersihan Total Terfilter
+    (window as any).cleanupPermissions = async function(e?: Event) {
+      if (e) e.preventDefault();
+      const btn = document.getElementById('btn-cleanup-total') as HTMLButtonElement | null;
+      const btnText = document.getElementById('btn-cleanup-text');
+
+      const isDeleteAll = window.confirm(
+        'Bersihkan / Kosongkan Seluruh Daftar Permohonan Izin?\n\n' +
+        '• Klik [OK] untuk MENGHAPUS SEMUA daftar permohonan izin (reset bersih).\n' +
+        '• Klik [Batal] untuk membatalkan.'
+      );
+      if (!isDeleteAll) return;
+
+      if (btn) btn.disabled = true;
+      if (btnText) btnText.textContent = 'Membersihkan...';
+
+      try {
+        const res = await fetch('/api/permissions', { method: 'DELETE' });
+        const result = await res.json();
+        if (res.ok) {
+          if (typeof (window as any).showToast === 'function') {
+            (window as any).showToast(result.message || 'Seluruh permohonan izin berhasil dibersihkan!', 'success');
+          } else {
+            alert(result.message || 'Seluruh permohonan izin berhasil dibersihkan!');
+          }
+          await loadData();
+        } else {
+          alert('Gagal membersihkan data: ' + (result.message || 'Error'));
+        }
+      } catch (err) {
+        console.error('Error saat pembersihan izin:', err);
+        alert('Terjadi kesalahan koneksi ke server.');
+      } finally {
+        if (btn) btn.disabled = false;
+        if (btnText) btnText.textContent = 'Bersihkan Permohonan';
+      }
+    };
+
+    btnCleanupTotal?.addEventListener('click', (e) => (window as any).cleanupPermissions(e));
+
+    // Load Data
+    async function loadData() {
+      try {
+        const [pRes, sRes] = await Promise.all([
+          fetch('/api/permissions'),
+          fetch('/api/students'),
+        ]);
+        permissionsData = await pRes.json();
+        studentsData = await sRes.json();
+
+        populateStudentSelect();
+        updateStats();
+        renderList();
+      } catch (e) {
+        console.error('Gagal memuat data perizinan:', e);
+      }
+    }
+
+    function populateStudentSelect() {
+      if (!studentSelect) return;
+      studentSelect.innerHTML = '<option value="">-- Pilih Siswa atau Guru --</option>' +
+        studentsData.map((s) => `<option value="${s.id}" data-name="${s.name}" data-class="${s.className}">${s.name} (${s.className})</option>`).join('');
+    }
+
+    function updateStats() {
+      const menunggu = permissionsData.filter((p) => p.status === 'Menunggu').length;
+      const disetujui = permissionsData.filter((p) => p.status === 'Disetujui').length;
+      const ditolak = permissionsData.filter((p) => p.status === 'Ditolak').length;
+      const selesai = permissionsData.filter((p) => p.status === 'Selesai').length;
+
+      const setEl = (id: string, val: string | number) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = String(val);
+      };
+
+      setEl('perm-stat-menunggu', menunggu);
+      setEl('perm-stat-disetujui', disetujui);
+      setEl('perm-stat-ditolak', ditolak + selesai);
+
+      setEl('count-all', permissionsData.length);
+      setEl('count-sakit', permissionsData.filter((p) => p.category === 'sakit').length);
+      setEl('count-dispensasi', permissionsData.filter((p) => p.category === 'dispensasi').length);
+      setEl('count-keluarga', permissionsData.filter((p) => p.category === 'keluarga').length);
+    }
+
+    function renderList() {
+      if (!listContainer) return;
+
+      const filtered = permissionsData.filter((p) => {
+        const matchCategory = activeCategory === 'all' || p.category === activeCategory;
+        const q = searchQuery.toLowerCase();
+        const matchSearch = !q || p.name.toLowerCase().includes(q) || (p.title || '').toLowerCase().includes(q) || (p.className || '').toLowerCase().includes(q);
+        return matchCategory && matchSearch;
+      });
+
+      if (filtered.length === 0) {
+        listContainer.innerHTML = `
+          <div class="bg-white rounded-2xl p-8 text-center text-slate-400 border border-slate-200/80">
+            <span class="material-symbols-outlined text-4xl mb-2 text-slate-300">inbox</span>
+            <p class="text-xs font-semibold">Tidak ada permohonan izin / dispensasi yang ditampilkan.</p>
+          </div>
+        `;
+        return;
+      }
+
+      listContainer.innerHTML = filtered.map((item) => {
+        const isMenunggu = item.status === 'Menunggu';
+        const isDisetujui = item.status === 'Disetujui';
+        const isSelesai = item.status === 'Selesai';
+        const isDitolak = item.status === 'Ditolak';
+
+        // Badge status akurat
+        const statusBadge = isMenunggu
+          ? '<span class="px-3 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-300">Menunggu Persetujuan</span>'
+          : isDisetujui
+          ? '<span class="px-3 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">Disetujui Sah</span>'
+          : isSelesai
+          ? '<span class="px-3 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-300">Selesai (Arsip)</span>'
+          : '<span class="px-3 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-900 border border-rose-300">Ditolak</span>';
+
+        const borderLeftColor = isMenunggu ? 'border-l-amber-500' : isDisetujui ? 'border-l-emerald-500' : isSelesai ? 'border-l-slate-400' : 'border-l-rose-500';
+
+        // Category icon & gradient
+        const isSakit = item.category === 'sakit';
+        const isKeluarga = item.category === 'keluarga';
+        const badgeGrad = isSakit ? 'from-emerald-500 to-teal-700' : isKeluarga ? 'from-indigo-500 to-purple-700' : 'from-blue-600 via-indigo-600 to-purple-600';
+        const badgeTag = isSakit ? 'MEDIS' : isKeluarga ? 'IZIN' : 'LKS/PKL';
+
+        // Action buttons: Opsi Setujui atau Tolak untuk Guru / Admin
+        let actionHtml = '';
+        if (isGuruOrAdmin) {
+          if (isMenunggu) {
+            actionHtml = `
+              <div class="flex items-center gap-2">
+                <button data-action="reject" data-id="${item.id}" class="btn-action-reject px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 text-xs font-bold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-rose-600 active:scale-95 flex items-center gap-1">
+                  <span class="material-symbols-outlined text-sm">cancel</span>
+                  <span>Tolak</span>
+                </button>
+                <button data-action="approve" data-id="${item.id}" class="btn-action-approve px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all duration-200 shadow-md shadow-blue-500/20 active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-600 flex items-center gap-1">
+                  <span class="material-symbols-outlined text-sm">check_circle</span>
+                  <span>Setujui</span>
+                </button>
+              </div>
+            `;
+          } else if (isDisetujui) {
+            actionHtml = `
+              <div class="flex items-center gap-2">
+                <span class="px-3 py-1.5 rounded-xl bg-emerald-100 text-emerald-900 border border-emerald-300 text-xs font-bold flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-sm text-emerald-700">check_circle</span>
+                  <span>Disetujui Sah</span>
+                </span>
+                <button data-action="reject" data-id="${item.id}" class="btn-action-reject px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-300 text-slate-600 border border-slate-200 text-xs font-semibold transition-all duration-200 active:scale-95 flex items-center gap-1" title="Batalkan dan ubah status ke Ditolak">
+                  <span class="material-symbols-outlined text-xs">close</span>
+                  <span>Tolak</span>
+                </button>
+              </div>
+            `;
+          } else if (isDitolak) {
+            actionHtml = `
+              <div class="flex items-center gap-2">
+                <span class="px-3 py-1.5 rounded-xl bg-rose-100 text-rose-900 border border-rose-300 text-xs font-bold flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-sm text-rose-700">cancel</span>
+                  <span>Ditolak</span>
+                </span>
+                <button data-action="approve" data-id="${item.id}" class="btn-action-approve px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold transition-all duration-200 active:scale-95 flex items-center gap-1" title="Ubah status ke Disetujui">
+                  <span class="material-symbols-outlined text-xs">check_circle</span>
+                  <span>Setujui</span>
+                </button>
+              </div>
+            `;
+          } else {
+            // Selesai (Arsip)
+            actionHtml = `
+              <div class="flex items-center gap-2">
+                <span class="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 border border-slate-300 text-xs font-bold flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-sm text-slate-500">inventory_2</span>
+                  <span>Selesai (Arsip)</span>
+                </span>
+                <button data-action="approve" data-id="${item.id}" class="btn-action-approve px-2.5 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-semibold transition-all duration-200 active:scale-95 flex items-center gap-1" title="Buka kembali dan setujui izin ini">
+                  <span class="material-symbols-outlined text-xs">check</span>
+                  <span>Setujui Lagi</span>
+                </button>
+              </div>
+            `;
+          }
+        } else {
+          // Siswa: hanya lihat badge
+          actionHtml = `
+            <span class="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold">
+              ${item.status}
+            </span>
+          `;
+        }
+
+        return `
+          <article class="bg-white rounded-2xl p-4 sm:p-5 shadow-xs hover:shadow-md transition-all duration-200 flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-l-4 ${borderLeftColor} border border-slate-200/70">
+            <div class="flex items-start sm:items-center gap-4">
+              <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br ${badgeGrad} p-2 text-white flex flex-col items-center justify-center text-center shrink-0 shadow-md">
+                <span class="text-[9px] font-black uppercase tracking-wider text-white/90">${badgeTag}</span>
+                <span class="text-xs font-black mt-0.5">${item.className}</span>
+                <span class="text-[9px] text-white/80 font-mono">${item.daysCount || 1} HARI</span>
+              </div>
+              <div class="min-w-0">
+                <div class="flex flex-wrap items-center gap-2">
+                  <h4 class="text-sm sm:text-base font-extrabold text-slate-900">${item.name}</h4>
+                  <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">${item.className}</span>
+                  ${statusBadge}
+                </div>
+                <p class="text-xs font-semibold text-slate-800 mt-1 flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-sm text-blue-600">article</span>
+                  <span>${item.title}</span>
+                  <span class="text-slate-300">•</span>
+                  <span class="text-slate-500 font-normal font-mono text-[11px]">${item.startDate} s/d ${item.endDate}</span>
+                </p>
+                <div class="flex flex-wrap items-center gap-3 mt-2 text-xs text-slate-500">
+                  <span class="flex items-center gap-1">
+                    <span class="material-symbols-outlined text-sm text-emerald-600">task</span>
+                    <span>Lampiran: ${item.attachmentNote || 'Surat Permohonan'}</span>
+                  </span>
+                  ${item.photoProof ? `
+                    <span class="inline-flex items-center gap-1 text-[11px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded-lg shadow-2xs">
+                      <span class="material-symbols-outlined text-xs text-blue-600">photo_library</span>
+                      <span>Ada Foto Bukti</span>
+                    </span>
+                  ` : ''}
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 self-end lg:self-center shrink-0">
+              <button
+                type="button"
+                data-id="${item.id}"
+                class="btn-view-detail px-3 py-2 rounded-xl bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200 hover:border-blue-300 text-xs font-bold transition-all duration-150 active:scale-95 flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                title="Lihat foto bukti surat & rincian permohonan siswa"
+              >
+                <span class="material-symbols-outlined text-sm text-blue-600">visibility</span>
+                <span>Foto & Rincian</span>
+              </button>
+              ${actionHtml}
+              <button
+                type="button"
+                data-id="${item.id}"
+                data-name="${item.name}"
+                class="btn-action-delete p-2 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-400 hover:text-rose-600 border border-slate-200 hover:border-rose-300 text-xs font-bold transition-all duration-150 active:scale-95 flex items-center justify-center cursor-pointer shadow-2xs"
+                title="Hapus permohonan ini secara permanen"
+              >
+                <span class="material-symbols-outlined text-base">delete</span>
+              </button>
+            </div>
+          </article>
+        `;
+      }).join('');
+
+      // Wire action buttons
+      listContainer.querySelectorAll('.btn-action-approve').forEach((btn) => {
+        btn.addEventListener('click', () => updateStatus((btn as HTMLElement).dataset.id!, 'Disetujui'));
+      });
+      listContainer.querySelectorAll('.btn-action-reject').forEach((btn) => {
+        btn.addEventListener('click', () => updateStatus((btn as HTMLElement).dataset.id!, 'Ditolak'));
+      });
+      listContainer.querySelectorAll('.btn-action-delete').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const id = (btn as HTMLElement).dataset.id;
+          const name = (btn as HTMLElement).dataset.name || 'siswa';
+          if (!id) return;
+          if (!confirm(`Hapus permohonan izin dari ${name} secara permanen?`)) return;
+          try {
+            const res = await fetch(`/api/permissions?id=${id}`, { method: 'DELETE' });
+            if (res.ok) {
+              if (typeof (window as any).showToast === 'function') {
+                (window as any).showToast('Permohonan berhasil dihapus!', 'success');
+              }
+              await loadData();
+            }
+          } catch (e) {
+            console.error('Gagal menghapus izin:', e);
+          }
+        });
+      });
+      listContainer.querySelectorAll('.btn-view-detail').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const id = (btn as HTMLElement).dataset.id;
+          const item = permissionsData.find((p) => p.id === id);
+          if (item) openDetailModal(item);
+        });
+      });
+    }
+
+    // Modal Detail Control (Khusus Guru / Read-Only)
+    const detailModal = document.getElementById('detail-perm-modal');
+    const btnCloseDetailModal = document.getElementById('btn-close-detail-modal');
+    const btnCloseDetailModalFooter = document.getElementById('btn-close-detail-modal-footer');
+
+    const closeDetailModal = () => {
+      if (detailModal) {
+        detailModal.classList.add('hidden');
+        detailModal.classList.remove('flex');
+      }
+    };
+
+    btnCloseDetailModal?.addEventListener('click', closeDetailModal);
+    btnCloseDetailModalFooter?.addEventListener('click', closeDetailModal);
+
+    function openDetailModal(item: any) {
+      if (!detailModal) return;
+
+      const setEl = (id: string, text: string) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = text;
+      };
+
+      setEl('detail-student-avatar', (item.name || 'S').charAt(0).toUpperCase());
+      setEl('detail-student-name', item.name || '-');
+      setEl('detail-student-class', item.className || '-');
+      setEl('detail-student-id', item.studentId || '-');
+      setEl('detail-perm-category', item.categoryLabel || item.category || 'Izin');
+      setEl('detail-perm-dates', `${item.startDate} s/d ${item.endDate || item.startDate} (${item.daysCount || 1} Hari)`);
+      setEl('detail-perm-reason', item.title || '-');
+      setEl('detail-perm-attach', item.attachmentNote || 'Surat Permohonan');
+
+      // Status Badge
+      const statusBadgeContainer = document.getElementById('detail-status-badge');
+      if (statusBadgeContainer) {
+        if (item.status === 'Menunggu') {
+          statusBadgeContainer.innerHTML = '<span class="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300">Menunggu</span>';
+        } else if (item.status === 'Disetujui') {
+          statusBadgeContainer.innerHTML = '<span class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">Disetujui Sah</span>';
+        } else if (item.status === 'Ditolak') {
+          statusBadgeContainer.innerHTML = '<span class="px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-900 border border-rose-300">Ditolak</span>';
+        } else {
+          statusBadgeContainer.innerHTML = '<span class="px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-300">Selesai (Arsip)</span>';
+        }
+      }
+
+      // Foto Bukti
+      const photoContainer = document.getElementById('detail-photo-container');
+      const noPhotoAlert = document.getElementById('detail-no-photo');
+      const photoImg = document.getElementById('detail-photo-img') as HTMLImageElement | null;
+      const photoLink = document.getElementById('detail-photo-link') as HTMLAnchorElement | null;
+      const photoDownload = document.getElementById('detail-photo-download') as HTMLAnchorElement | null;
+      const photoTag = document.getElementById('detail-photo-tag');
+
+      if (item.photoProof && item.photoProof.trim() !== '') {
+        if (photoContainer) photoContainer.classList.remove('hidden');
+        if (noPhotoAlert) noPhotoAlert.classList.add('hidden');
+        if (photoImg) photoImg.src = item.photoProof;
+        if (photoLink) photoLink.href = item.photoProof;
+        if (photoDownload) photoDownload.href = item.photoProof;
+        if (photoTag) photoTag.textContent = 'Terlampir';
+      } else {
+        if (photoContainer) photoContainer.classList.add('hidden');
+        if (noPhotoAlert) noPhotoAlert.classList.remove('hidden');
+        if (photoTag) photoTag.textContent = 'Tidak Ada';
+      }
+
+      // Action Buttons inside Modal
+      const actionGroup = document.getElementById('detail-action-buttons-group');
+      if (actionGroup) {
+        if (isGuruOrAdmin) {
+          if (item.status === 'Menunggu') {
+            actionGroup.innerHTML = `
+              <button type="button" class="btn-modal-reject px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 text-xs font-bold transition flex items-center gap-1 active:scale-95 cursor-pointer">
+                <span class="material-symbols-outlined text-sm">cancel</span>
+                <span>Tolak</span>
+              </button>
+              <button type="button" class="btn-modal-approve px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition shadow-md shadow-blue-500/20 active:scale-95 flex items-center gap-1 cursor-pointer">
+                <span class="material-symbols-outlined text-sm">check_circle</span>
+                <span>Setujui Izin</span>
+              </button>
+            `;
+          } else if (item.status === 'Disetujui') {
+            actionGroup.innerHTML = `
+              <span class="px-3 py-1.5 rounded-xl bg-emerald-100 text-emerald-900 border border-emerald-300 text-xs font-bold flex items-center gap-1">
+                <span class="material-symbols-outlined text-sm text-emerald-700">check_circle</span>
+                <span>Disetujui Sah</span>
+              </span>
+              <button type="button" class="btn-modal-reject px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-300 text-slate-600 border border-slate-200 text-xs font-semibold transition active:scale-95 cursor-pointer">
+                <span>Ubah ke Tolak</span>
+              </button>
+            `;
+          } else {
+            actionGroup.innerHTML = `
+              <button type="button" class="btn-modal-approve px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-md active:scale-95 flex items-center gap-1 cursor-pointer">
+                <span class="material-symbols-outlined text-sm">check_circle</span>
+                <span>Setujui Sekarang</span>
+              </button>
+            `;
+          }
+
+          actionGroup.querySelector('.btn-modal-approve')?.addEventListener('click', async () => {
+            await updateStatus(item.id, 'Disetujui');
+            closeDetailModal();
+          });
+          actionGroup.querySelector('.btn-modal-reject')?.addEventListener('click', async () => {
+            await updateStatus(item.id, 'Ditolak');
+            closeDetailModal();
+          });
+        } else {
+          actionGroup.innerHTML = '';
+        }
+      }
+
+      detailModal.classList.remove('hidden');
+      detailModal.classList.add('flex');
+    }
+
+    async function updateStatus(id: string, status: 'Disetujui' | 'Ditolak') {
+      try {
+        const res = await fetch('/api/permissions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'update_status', id, status }),
+        });
+        if (res.ok) {
+          await loadData();
+        }
+      } catch (e) {
+        console.error('Gagal memperbarui status:', e);
+      }
+    }
+
+    // Modal Control
+    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
+    const startInput = document.getElementById('perm-start-input') as HTMLInputElement | null;
+    const endInput = document.getElementById('perm-end-input') as HTMLInputElement | null;
+    if (startInput) startInput.value = todayStr;
+    if (endInput) endInput.value = todayStr;
+
+    btnOpenModal?.addEventListener('click', () => {
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+    });
+
+    const closeModal = () => {
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    };
+    btnCloseModal?.addEventListener('click', closeModal);
+    btnCancelModal?.addEventListener('click', closeModal);
+
+    // Form Submit
+    permForm?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const selectedOption = studentSelect?.options[studentSelect.selectedIndex];
+      const studentId = studentSelect?.value || '';
+      const name = selectedOption?.getAttribute('data-name') || '';
+      const className = selectedOption?.getAttribute('data-class') || '';
+      const category = (document.getElementById('perm-category-select') as HTMLSelectElement)?.value || 'dispensasi';
+      const status = (document.getElementById('perm-status-select') as HTMLSelectElement)?.value || 'Disetujui';
+      const title = (document.getElementById('perm-title-input') as HTMLInputElement)?.value || '';
+      const startDate = startInput?.value || todayStr;
+      const endDate = endInput?.value || todayStr;
+      const attachmentNote = (document.getElementById('perm-attach-input') as HTMLInputElement)?.value || 'Surat Pengantar';
+
+      const sTime = new Date(startDate).getTime();
+      const eTime = new Date(endDate).getTime();
+      const daysCount = Math.max(1, Math.round((eTime - sTime) / (1000 * 60 * 60 * 24)) + 1);
+
+      const payload = {
+        studentId,
+        name,
+        className,
+        category,
+        title,
+        startDate,
+        endDate,
+        daysCount,
+        status,
+        attachmentNote,
+      };
+
+      try {
+        const res = await fetch('/api/permissions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (res.ok) {
+          closeModal();
+          permForm.reset();
+          if (startInput) startInput.value = todayStr;
+          if (endInput) endInput.value = todayStr;
+          await loadData();
+        }
+      } catch (err) {
+        console.error('Gagal mengirim formulir:', err);
+      }
+    });
+
+    // Tab Filter
+    document.querySelectorAll('.tab-category').forEach((tab) => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab-category').forEach((t) => {
+          t.className = 'tab-category tab-notch-inactive px-5 py-2.5 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-200 transition-all duration-200 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-600';
+        });
+        tab.className = 'tab-category tab-notch-active px-5 py-2.5 text-xs font-bold text-slate-900 transition-all duration-200 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-600';
+        activeCategory = (tab as HTMLElement).dataset.category || 'all';
+        renderList();
+      });
+    });
+
+    // Search Filter
+    searchInput?.addEventListener('input', (e) => {
+      searchQuery = (e.target as HTMLInputElement).value;
+      renderList();
+    });
+
+    // SSE Realtime Listener
+    window.addEventListener('attendance-updated', loadData);
+
+    // Initial Load
+    loadData();
+  </script>
+</Layout>
