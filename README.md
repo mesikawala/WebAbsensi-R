@@ -51,13 +51,14 @@ Untuk membuat proyek ini, Anda membutuhkan bahan perangkat keras (hardware) dan 
 
 ### 1. Komponen Perangkat Keras (Hardware)
 | Komponen | Penjelasan Sederhana |
-| **ESP32 DevKit V1** : Otak pemroses utama mesin yang sudah dilengkapi modul WiFi. |
-| **RFID Reader RC522** : Sensor pemindai kartu RFID frekuensi 13.56 MHz. |
-| **Kartu RFID / Gantungan Kunci RFID** : Kartu Mifare 1K atau kartu pelajar ber-RFID untuk dipegang siswa. |
-| **Layar LCD 1602 + Modul I2C** : Layar kecil 2 baris untuk menampilkan nama siswa dan status absensi. |
-| **Buzzer** : Pengeluar bunyi tanda absensi berhasil atau ditolak. |
-| **Kabel Jumper (Dupont)** : Kabel-kabel kecil untuk menyambungkan antar komponen. |
-| **Kabel Micro USB & Charger HP** : Untuk mengisi daya dan memasukkan program ke ESP32. |
+| :--- | :--- |
+| **ESP32 DevKit V1** | Otak pemroses utama mesin yang sudah dilengkapi modul WiFi. |
+| **RFID Reader RC522** | Sensor pemindai kartu RFID frekuensi 13.56 MHz. |
+| **Kartu RFID / Gantungan Kunci RFID** | Kartu Mifare 1K atau kartu pelajar ber-RFID untuk dipegang siswa. |
+| **Layar LCD 1602 + Modul I2C** | Layar kecil 2 baris untuk menampilkan nama siswa dan status absensi. |
+| **Buzzer** | Pengeluar bunyi tanda absensi berhasil atau ditolak. |
+| **Kabel Jumper (Dupont)** | Kabel-kabel kecil untuk menyambungkan antar komponen. |
+| **Kabel Micro USB & Charger HP** | Untuk mengisi daya dan memasukkan program ke ESP32. |
 
 ### 2. Program Komputer (Software)
 * **Node.js** (Versi 22 ke atas): Untuk menjalankan aplikasi web di komputer/laptop.
