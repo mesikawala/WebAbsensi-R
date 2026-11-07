@@ -9,8 +9,8 @@
   "scheduler": {
     "lastBolosDate": null,
     "lastArchivedDate": "2026-11-06",
-    "nextRunType": "bolos",
-    "nextRunTime": "2026-11-07 17:00:00 WIB (Deteksi Siswa Bolos)",
-    "lastStatusMessage": "Timer aktif: Menunggu jadwal berikutnya dalam ~2.36 jam (2026-11-07 17:00:00 WIB (Deteksi Siswa Bolos))"
+    "nextRunType": "archive",
+    "nextRunTime": "2026-11-07 23:00:00 WIB (Arsip & Reset Harian)",
+    "lastStatusMessage": "Timer aktif: Menunggu jadwal berikutnya dalam ~3.41 jam (2026-11-07 23:00:00 WIB (Arsip & Reset Harian))"
   }
 }
